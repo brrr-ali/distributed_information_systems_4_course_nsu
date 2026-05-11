@@ -1,0 +1,75 @@
+services:
+
+  manager:
+    build:
+      context: .
+      dockerfile: Manager/Dockerfile
+    container_name: manager
+    ports:
+      - "8080:8080"
+    environment:
+      - ALPHABET=abcdefghijklmnopqrstuvwxyz0123456789
+      - CHECK_INTERVAL_SEC=5
+      - TASK_TIMEOUT_MIN=5
+    networks:
+      - cracknet
+    # volumes:
+    #   - ./logs:/app/logs
+    
+
+  worker1:
+    build:
+      context: .
+      dockerfile: Worker/Dockerfile
+    container_name: worker1
+    ports:                   
+      - "8081:8080"  
+    environment:
+      - WORKER_NAME=worker1
+      - MANAGER_SERVICE_URL=http://manager:8080
+      - WORKER_SERVICE_URL=http://worker1:8080
+    depends_on:
+      - manager
+    networks:
+      - cracknet
+    # volumes:
+    #   - ./logs:/app/logs
+
+  worker2:
+    build:
+      context: .
+      dockerfile: Worker/Dockerfile
+    container_name: worker2
+    ports:                   
+      - "8082:8080"  
+    environment:
+      - WORKER_NAME=worker2
+      - MANAGER_SERVICE_URL=http://manager:8080
+      - WORKER_SERVICE_URL=http://worker2:8080
+    depends_on:
+      - manager
+    networks:
+      - cracknet
+    # volumes:
+    #   - ./logs:/app/logs
+
+  worker3:
+    build:
+      context: .
+      dockerfile: Worker/Dockerfile
+    container_name: worker3
+    ports:                   
+      - "8083:8080"  
+    environment:
+      - WORKER_NAME=worker3
+      - MANAGER_SERVICE_URL=http://manager:8080
+      - WORKER_SERVICE_URL=http://worker3:8080
+    depends_on:
+      - manager
+    networks:
+      - cracknet
+    # volumes:
+    #   - ./logs:/app/logs
+
+networks:
+  cracknet:

@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CrackHash</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #f5f5f5;
+    color: #1a1a1a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── header ── */
+  header {
+    background: #fff;
+    border-bottom: 1px solid #e5e5e5;
+    padding: 0 32px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  header h1 { font-size: 1rem; font-weight: 600; letter-spacing: -.01em; }
+  header h1 span { color: #888; font-weight: 400; }
+
+  .conn-badge {
+    font-size: .75rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .conn-badge.ok  { background: #e8f5e9; color: #2e7d32; }
+  .conn-badge.err { background: #fce4ec; color: #c62828; }
+
+  /* ── layout ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    flex: 1;
+    max-width: 1100px;
+    margin: 32px auto;
+    width: 100%;
+    gap: 24px;
+    padding: 0 24px;
+  }
+
+  /* ── card ── */
+  .card {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    padding: 24px;
+  }
+
+  .card-title {
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 20px;
+  }
+
+  /* ── form ── */
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: .78rem;
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 6px;
+  }
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: .85rem;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: border-color .15s;
+    background: #fafafa;
+  }
+  input:focus { border-color: #1a1a1a; background: #fff; }
+
+  .presets {
+    display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px;
+  }
+  .preset {
+    font-size: .72rem;
+    padding: 3px 9px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background: none;
+    cursor: pointer;
+    color: #555;
+    font-family: inherit;
+    transition: border-color .15s, color .15s;
+  }
+  .preset:hover { border-color: #1a1a1a; color: #1a1a1a; }
+
+  .btn-primary {
+    width: 100%;
+    padding: 10px;
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: .85rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: opacity .15s;
+  }
+  .btn-primary:hover { opacity: .85; }
+  .btn-primary:disabled { opacity: .35; cursor: not-allowed; }
+
+  /* ── workers ── */
+  .worker-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: .82rem;
+  }
+  .worker-row:last-child { border-bottom: none; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dot.alive { background: #43a047; }
+  .dot.dead  { background: #e53935; }
+  .wname { font-weight: 500; flex: 1; }
+  .no-workers { font-size: .82rem; color: #aaa; padding: 8px 0; }
+
+  /* ── tasks ── */
+  .tasks-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .btn-ghost {
+    font-size: .75rem;
+    padding: 4px 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    background: none;
+    cursor: pointer;
+    color: #888;
+    font-family: inherit;
+    transition: color .15s, border-color .15s;
+  }
+  .btn-ghost:hover { color: #e53935; border-color: #e53935; }
+
+  .empty {
+    text-align: center;
+    padding: 48px 0;
+    color: #bbb;
+    font-size: .85rem;
+  }
+
+  .task-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: start;
+    padding: 16px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .task-row:last-child { border-bottom: none; }
+
+  .task-hash {
+    font-size: .78rem;
+    color: #aaa;
+    font-family: monospace;
+    margin-bottom: 4px;
+    word-break: break-all;
+  }
+  .task-info {
+    font-size: .82rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+
+  .badge {
+    font-size: .68rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .badge-progress { background: #e3f2fd; color: #1565c0; }
+  .badge-ready    { background: #e8f5e9; color: #2e7d32; }
+  .badge-error    { background: #fce4ec; color: #c62828; }
+
+  .bar-wrap {
+    height: 3px;
+    background: #f0f0f0;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: #1a1a1a;
+    transition: width .6s ease;
+  }
+  .bar-fill.ready { background: #43a047; }
+  .bar-fill.error { background: #e53935; }
+
+  .task-result { font-size: .82rem; }
+  .task-result.found { color: #2e7d32; font-weight: 600; }
+  .task-result.none  { color: #aaa; }
+  .task-result.err   { color: #c62828; }
+
+  .task-side {
+    display: flex; flex-direction: column;
+    align-items: flex-end; gap: 6px;
+  }
+  .task-elapsed { font-size: .72rem; color: #bbb; }
+
+  .btn-cancel {
+    font-size: .72rem;
+    padding: 3px 8px;
+    border: 1px solid #fce4ec;
+    border-radius: 4px;
+    background: none;
+    color: #e53935;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .15s;
+  }
+  .btn-cancel:hover { background: #fce4ec; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CrackHash <span>/ GUI</span></h1>
+  <div class="conn-badge err" id="conn">Нет соединения</div>
+</header>
+
+<div class="layout">
+
+  <!-- левая колонка -->
+  <div style="display:flex;flex-direction:column;gap:20px;">
+
+    <div class="card">
+      <div class="card-title">Новая задача</div>
+
+      <div class="field">
+        <label>MD5 хеш</label>
+        <input id="hash-input" type="text" placeholder="e2fc714c4727ee9395f324cd2e7f331f" maxlength="32"/>
+        <div class="presets">
+          <button class="preset" onclick="preset('e2fc714c4727ee9395f324cd2e7f331f',4)">abcd</button>
+          <button class="preset" onclick="preset('900150983cd24fb0d6963f7d28e17f72',3)">abc</button>
+          <button class="preset" onclick="preset('0cc175b9c0f1b6a831c399e269772661',1)">a</button>
+          <button class="preset" onclick="preset('cfcd208495d565ef66e7dff9f98764da',1)">0</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Макс. длина слова</label>
+        <input id="len-input" type="number" value="4" min="1" max="8"/>
+      </div>
+
+      <button class="btn-primary" id="crack-btn" onclick="submitCrack()">Взломать</button>
+    </div>
+
+  <!-- правая колонка -->
+  <div class="card" style="align-self:start;">
+    <div class="tasks-header">
+      <div class="card-title" style="margin:0">Задачи</div>
+      <button class="btn-ghost" onclick="clearDone()">Очистить завершённые</button>
+    </div>
+    <div id="tasks-list">
+      <div class="empty">Задач пока нет</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const MANAGER = 'http://localhost:8080';
+const tasks   = new Map(); // id → {id, hash, maxLen, status, progress, data, startedAt}
+
+function preset(hash, len) {
+  document.getElementById('hash-input').value = hash;
+  document.getElementById('len-input').value  = len;
+}
+
+async function submitCrack() {
+  const hash   = document.getElementById('hash-input').value.trim();
+  const maxLen = parseInt(document.getElementById('len-input').value, 10);
+  if (hash.length !== 32) { alert('Введи корректный MD5 хеш (32 символа)'); return; }
+
+  const btn = document.getElementById('crack-btn');
+  btn.disabled = true;
+  try {
+    const res  = await fetch(`${MANAGER}/api/hash/crack`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({hash, maxLength: maxLen}),
+    });
+    const body = await res.json();
+    const id   = body.requestId ?? body.RequestId;
+    if (!id) throw new Error('Нет requestId в ответе');
+
+    tasks.set(id, {id, hash, maxLen, status:'IN_PROGRESS', progress:0, data:null, startedAt:Date.now()});
+    renderTasks();
+  } catch(e) {
+    alert('Ошибка: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function cancelTask(id) {
+  try {
+    await fetch(`${MANAGER}/internal/api/worker/task/cancel`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({taskId: id}),
+    });
+  } catch(_) {}
+  const t = tasks.get(id);
+  if (t) { t.status = 'ERROR'; renderTasks(); }
+}
+
+function clearDone() {
+  for (const [id, t] of tasks)
+    if (t.status !== 'IN_PROGRESS') tasks.delete(id);
+  renderTasks();
+}
+
+async function poll() {
+  const active = [...tasks.values()].filter(t => t.status === 'IN_PROGRESS');
+  await Promise.all(active.map(async t => {
+    try {
+      const res  = await fetch(`${MANAGER}/api/hash/status?requestId=${t.id}`);
+      const body = await res.json();
+      t.status   = body.status   ?? t.status;
+      t.progress = body.progress ?? t.progress;
+      t.data     = body.data;
+    } catch(_) {}
+  }));
+  if (active.length) renderTasks();
+}
+
+// Обновляем данные внутри существующих DOM-узлов — без мерцания
+function renderTasks() {
+  const container = document.getElementById('tasks-list');
+
+  if (!tasks.size) {
+    container.innerHTML = '<div class="empty">Задач пока нет</div>';
+    return;
+  }
+  if (container.querySelector('.empty')) container.innerHTML = '';
+
+  for (const t of [...tasks.values()].reverse()) {
+    let row = document.getElementById('row-' + t.id);
+    if (!row) {
+      row = document.createElement('div');
+      row.className = 'task-row';
+      row.id = 'row-' + t.id;
+      container.prepend(row);
+    }
+
+    const cls   = t.status === 'READY' ? 'ready' : t.status === 'ERROR' ? 'error' : 'progress';
+    const label = {IN_PROGRESS:'В процессе', READY:'Готово', ERROR:'Ошибка'}[t.status] ?? t.status;
+
+    let result = '';
+    if (t.status === 'READY') {
+      result = t.data?.length
+        ? `<div class="task-result found">Найдено: ${t.data.join(', ')}</div>`
+        : `<div class="task-result none">Слово не найдено (длина ≤ ${t.maxLen})</div>`;
+    } else if (t.status === 'ERROR') {
+      result = `<div class="task-result err">Ошибка или таймаут</div>`;
+    }
+
+    const cancelBtn = t.status === 'IN_PROGRESS'
+      ? `<button class="btn-cancel" onclick="cancelTask('${t.id}')">Отменить</button>`
+      : '';
+
+    row.innerHTML = `
+      <div>
+        <div class="task-hash">${t.hash}</div>
+        <div class="task-info">
+          <span class="badge badge-${cls}">${label}</span>
+          <span style="color:#bbb;font-size:.75rem">${t.progress}% · длина ≤ ${t.maxLen}</span>
+        </div>
+        <div class="bar-wrap"><div class="bar-fill ${cls}" style="width:${t.progress}%"></div></div>
+        ${result}
+      </div>
+      <div class="task-side">
+        <span class="task-elapsed">${fmtElapsed(t.startedAt)}</span>
+        ${cancelBtn}
+      </div>`;
+  }
+}
+
+
+async function checkConn() {
+  const badge = document.getElementById('conn');
+  try {
+    const r = await fetch(`${MANAGER}/internal/api/worker/health`, {signal: AbortSignal.timeout(2500)});
+    if (r.ok) { badge.textContent = 'Подключено'; badge.className = 'conn-badge ok'; return; }
+  } catch(_) {}
+  badge.textContent = 'Нет соединения'; badge.className = 'conn-badge err';
+}
+
+function fmtElapsed(start) {
+  const s = Math.floor((Date.now() - start) / 1000);
+  if (s < 60)   return `${s}с`;
+  if (s < 3600) return `${Math.floor(s/60)}м ${s%60}с`;
+  return `${Math.floor(s/3600)}ч ${Math.floor(s%3600/60)}м`;
+}
+
+checkConn();
+setInterval(poll,         1500);
+setInterval(checkConn,   10000);
+setInterval(() => {
+  if ([...tasks.values()].some(t => t.status === 'IN_PROGRESS')) renderTasks();
+}, 1000);
+</script>
+</body>
+</html>
