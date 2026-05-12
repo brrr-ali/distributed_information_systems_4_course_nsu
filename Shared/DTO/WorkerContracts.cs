@@ -25,13 +25,10 @@ namespace Shared.DTO
         Guid TaskRequestId,
         string Hash,
         int MaxLength,
-        double StartIndex,
-        double EndIndex
-        /*
-         * TODO:
-         * think about add string alphabet... idk...
-         * Is it needed? Idk....
-         */
+        int PartNumber,
+        int PartCount,
+        long ? StartIndex = null, 
+        long? EndIndex   = null 
     );
 
     public record WorkerTaskResponse
@@ -39,9 +36,10 @@ namespace Shared.DTO
         Guid WorkerId,
         Guid TaskRequestId,
         List<string> FoundWords,
-        double StartIndex,
-        double EndIndex,
-        double CheckedCount,
+        long CheckedCount,
+        long CurrentIndex, 
+        long RangeStart,
+        long RangeEnd,
         bool IsRequestDone 
     );
 

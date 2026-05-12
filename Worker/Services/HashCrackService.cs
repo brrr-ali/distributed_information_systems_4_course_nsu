@@ -15,9 +15,9 @@ public class HashCrackService : IHashCrackService
     private readonly HttpClient _httpClient;
     private readonly ConcurrentDictionary<Guid, (Task Task, CancellationTokenSource Cts)> _activeTasks = new();
 
-    private const int REPORT_INTERVAL = 100000;
+    private const int REPORT_INTERVAL = 100_000;
 
-    public HashCrackService (
+    public HashCrackService(
         WorkerConfig config,
         ILogger<HashCrackService> logger,
         HttpClient httpClient)
@@ -32,10 +32,11 @@ public class HashCrackService : IHashCrackService
     {
         var cts = new CancellationTokenSource();
         var task = Task.Run(() => ProcessTask(request, cts.Token), cts.Token);
-        
+
         _activeTasks[request.TaskRequestId] = (task, cts);
-        
-        task.ContinueWith(t => {
+
+        task.ContinueWith(completedTask =>
+        {
             _activeTasks.TryRemove(request.TaskRequestId, out _);
             cts.Dispose();
         });
@@ -55,88 +56,99 @@ public class HashCrackService : IHashCrackService
         }
     }
 
-    private async Task ProcessTask(WorkerTaskRequest request, CancellationToken cancellationToken)
+    private async Task ProcessTask(WorkerTaskRequest request, CancellationToken ct)
     {
+        try
+        {
+            long startIndex, endIndex;
 
-        try{
-            var found = new List<string>();
-            double checkedCount = 0;
-            long batchStart = (long)request.StartIndex;
-            double startIndex = request.StartIndex;
-            double endIndex = 0;
-
-            _logger.LogInformation(
-                "{WorkerName} got task {TaskId}: range [{Start}-{End}], maxLength={MaxLength}, hash={Hash}", 
-                _config.WorkerName,
-                request.TaskRequestId,
-                request.StartIndex,
-                request.EndIndex,
-                request.MaxLength,
-                request.Hash
-            );
-            
-
-            var startTime = DateTime.UtcNow;
-            
-            for (double index = request.StartIndex; index <= request.EndIndex; index++)
+            if (request.StartIndex.HasValue && request.EndIndex.HasValue)
             {
+                // Режим переназначения — диапазон задан явно менеджером
+                startIndex = request.StartIndex.Value;
+                endIndex   = request.EndIndex.Value;
+                _logger.LogInformation("{Worker} REASSIGNED task {TaskId}: [{Start}-{End}]",
+                    _config.WorkerName, request.TaskRequestId, startIndex, endIndex);
+            }
+            else
+            {
+                // Обычный режим — воркер считает свой диапазон сам
+                long total     = CalculateTotalCombinations(request.MaxLength);
+                long chunkSize = total / request.PartCount;
+                startIndex = (long)request.PartNumber * chunkSize;
+                endIndex   = request.PartNumber == request.PartCount - 1
+                    ? total - 1
+                    : (long)(request.PartNumber + 1) * chunkSize - 1;
+
+                _logger.LogInformation(
+                    "{Worker} task {TaskId}: part {Part}/{Count}, range [{Start}-{End}], total={Total}",
+                    _config.WorkerName, request.TaskRequestId,
+                    request.PartNumber, request.PartCount,
+                    startIndex, endIndex, total);
+            }
+
+            var found        = new List<string>();
+            long batchCount  = 0;   // дельта за текущий батч — сбрасывается после отправки
+            long currentIndex = startIndex;
+            var startTime    = DateTime.UtcNow;
+
+            for (long index = startIndex; index <= endIndex; index++)
+            {
+                ct.ThrowIfCancellationRequested();
+                currentIndex = index;
+
                 var word = IndexToWord(index, request.MaxLength);
-                checkedCount++;
+                batchCount++;
 
                 if (CalculateMD5(word) == request.Hash)
                 {
                     found.Add(word);
-                    _logger.LogInformation(
-                        "{WorkerName} found word '{Word}' for task {TaskId} (index {Index})",
-                        _config.WorkerName,
-                        word,
-                        request.TaskRequestId,
-                        index
-                    );
+                    _logger.LogInformation("{Worker} found '{Word}' at index {Index}",
+                        _config.WorkerName, word, index);
                 }
 
-
-
-                if (checkedCount % REPORT_INTERVAL == 0)
+                if (batchCount % REPORT_INTERVAL == 0)
                 {
-                    endIndex = index;
-                    await SendProgress(request.TaskRequestId, startIndex, endIndex, found, endIndex - startIndex + 1, false, cancellationToken);
-                    
+                    await SendProgress(
+                        request.TaskRequestId, found,
+                        batchCount, currentIndex,
+                        startIndex, endIndex,
+                        isCompleted: false, ct);
 
-                    var elapsed = DateTime.UtcNow - startTime;
-                    var speed = checkedCount / elapsed.TotalSeconds;
+                    var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
+                    var totalChecked = currentIndex - startIndex + 1;
+                    var speed = elapsed > 0 ? totalChecked / elapsed : 0;
 
                     _logger.LogInformation(
-                        "{WorkerName} task {TaskId}: checked {CheckedCount}/{TotalRange} words, found {FoundCount} words, speed: {Speed:F0} words/sec",
-                        _config.WorkerName,
-                        request.TaskRequestId,
-                        checkedCount,
-                        request.EndIndex - request.StartIndex + 1,
-                        found.Count,
-                        speed
-                    );
+                        "{Worker} task {TaskId}: {Checked}/{Total}, speed {Speed:F0} w/s",
+                        _config.WorkerName, request.TaskRequestId,
+                        totalChecked, endIndex - startIndex + 1, speed);
 
-                    startIndex = index + 1;
+                    batchCount = 0; // сбрасываем батч — менеджер накапливает сам через +=
                 }
             }
 
+            // Финальный батч (остаток после последней кратной REPORT_INTERVAL итерации)
+            await SendProgress(
+                request.TaskRequestId, found,
+                batchCount, endIndex,
+                startIndex, endIndex,
+                isCompleted: true, ct);
 
-            var totalTime = DateTime.UtcNow - startTime;
             _logger.LogInformation(
-                "{WorkerName} completed task {TaskId}: checked {CheckedCount} words, found {FoundCount} words, time: {TotalTime:g}",
-                _config.WorkerName,
-                request.TaskRequestId,
-                checkedCount,
-                found.Count,
-                totalTime
-            );
-
-            await SendProgress( request.TaskRequestId, startIndex, request.EndIndex, found, request.EndIndex - startIndex + 1, true, cancellationToken);
-
+                "{Worker} completed task {TaskId}: checked {Checked}, found {Found}, time {Time:g}",
+                _config.WorkerName, request.TaskRequestId,
+                endIndex - startIndex + 1, found.Count,
+                DateTime.UtcNow - startTime);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("{Worker} task {TaskId} cancelled",
+                _config.WorkerName, request.TaskRequestId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "{WorkerName} failed processing task {TaskId}", 
+            _logger.LogError(ex, "{Worker} failed task {TaskId}",
                 _config.WorkerName, request.TaskRequestId);
         }
         finally
@@ -145,66 +157,89 @@ public class HashCrackService : IHashCrackService
         }
     }
 
+    // Считаем суммарное число комбинаций для всех длин от 1 до maxLength
+    private long CalculateTotalCombinations(int maxLength)
+    {
+        long baseLen = _alphabet.Length;
+        long total   = 0;
+        long power   = 1;
+        for (int i = 1; i <= maxLength; i++)
+        {
+            power *= baseLen;   // точное целочисленное возведение в степень
+            total += power;
+        }
+        return total;
+    }
+
+    // Переводит линейный индекс в слово с учётом всех длин от 1 до maxLength
+    private string IndexToWord(long index, int maxLength)
+    {
+        long baseLen    = _alphabet.Length;
+        long levelStart = 0;
+        long power      = 1;
+
+        for (int wordLength = 1; wordLength <= maxLength; wordLength++)
+        {
+            power *= baseLen;               // baseLen^wordLength, без погрешности
+            long levelSize = power;
+
+            if (index < levelStart + levelSize)
+            {
+                long localIndex = index - levelStart;
+                char[] chars    = new char[wordLength];
+
+                for (int i = wordLength - 1; i >= 0; i--)
+                {
+                    chars[i]   = _alphabet[localIndex % baseLen];
+                    localIndex /= baseLen;
+                }
+
+                return new string(chars);
+            }
+
+            levelStart += levelSize;
+        }
+
+        return string.Empty;
+    }
+
     private async Task SendProgress(
         Guid taskId,
-        double startIndex,
-        double endIndex,
         List<string> foundWords,
-        double checkedCount,
+        long batchCheckedCount,     // дельта за батч, не накопленная сумма
+        long currentIndex,
+        long rangeStart,
+        long rangeEnd,
         bool isCompleted,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-
-        _logger.LogInformation(
-            "SENDING PROGRESS: task={TaskId}, start={Start}, end={End}, checkedCount={CheckedCount}, foundCount={FoundCount}, isCompleted={IsCompleted}",
-            taskId,
-            startIndex,
-            endIndex,
-            checkedCount,
-            foundWords.Count,
-            isCompleted
-        );
         var dto = new WorkerTaskResponse(
             _config.WorkerId,
             taskId,
-            foundWords,
-            startIndex,
-            endIndex,
-            checkedCount,
+            new List<string>(foundWords),   // копия, чтобы не гонять одну коллекцию
+            batchCheckedCount,
+            currentIndex,
+            rangeStart,
+            rangeEnd,
             isCompleted
         );
 
         var response = await _httpClient.PostAsJsonAsync(
             $"{_config.ManagerUrl}/internal/api/worker/result",
             dto,
-            cancellationToken
+            ct
         );
 
         _logger.LogInformation(
-            "SEND PROGRESS RESPONSE: task={TaskId}, statusCode={StatusCode}",
-            taskId,
-            response.StatusCode
-        );
-    }
-
-    private string IndexToWord(double index, int maxLength) 
-    { 
-        var sb = new StringBuilder(); 
-        long baseLen = _alphabet.Length; 
-        do 
-        { 
-            sb.Insert(0, _alphabet[(int)index % baseLen]); 
-            index /= baseLen; 
-        } while (index > 0 && sb.Length < maxLength); 
-        
-        return sb.ToString(); 
+            "SendProgress task={TaskId} batch={Batch} currentIndex={Index} completed={Done} status={Status}",
+            taskId, batchCheckedCount, currentIndex, isCompleted, response.StatusCode);
     }
 
     private static string CalculateMD5(string input)
     {
-        using var md5 = MD5.Create();
-        var bytes = Encoding.UTF8.GetBytes(input);
-        var hashBytes = md5.ComputeHash(bytes);
+        using var md5      = MD5.Create();
+        var bytes          = Encoding.UTF8.GetBytes(input);
+        var hashBytes      = md5.ComputeHash(bytes);
         return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
     }
 }
