@@ -20,11 +20,6 @@ builder.Services.AddSingleton(config);
 // Controllers
 builder.Services.AddControllers();
 
-// Swagger 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-
 // Services
 builder.Services.AddHostedService<WorkerRegistrationService>();
 builder.Services.AddSingleton<IHashCrackService, HashCrackService>();
@@ -45,17 +40,6 @@ builder.Services.AddHttpClient<HashCrackService>(client =>
 
 
 var app = builder.Build();
-
-
-// Swagger
-app.UseSwagger();
-// app.UseSwaggerUI();
-app.UseSwaggerUI(c =>
-{
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Worker API V1");
-    
-});
-
 
 app.MapControllers();
 

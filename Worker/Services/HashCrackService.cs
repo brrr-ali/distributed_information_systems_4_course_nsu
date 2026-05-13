@@ -1,44 +1,47 @@
-﻿using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 using Shared.DTO;
 using Worker.Models;
-using System.Text;
-using System.Security.Cryptography;
 
 namespace Worker.Services;
 
 public class HashCrackService : IHashCrackService
 {
-    private readonly char[] _alphabet;
+    private readonly char[]     _alphabet;
     private readonly WorkerConfig _config;
     private readonly ILogger<HashCrackService> _logger;
     private readonly HttpClient _httpClient;
-    private readonly ConcurrentDictionary<Guid, (Task Task, CancellationTokenSource Cts)> _activeTasks = new();
 
-    private const int REPORT_INTERVAL = 100_000;
+    private readonly ConcurrentDictionary<Guid, (Task Task, CancellationTokenSource Cts)>
+        _activeTasks = new();
+
+    private const int ReportInterval     = 100_000;
+    private const int SendRetryDelayMs   = 2_000;
+    private const int SendMaxAttempts    = 10;
 
     public HashCrackService(
         WorkerConfig config,
         ILogger<HashCrackService> logger,
         HttpClient httpClient)
     {
-        _config = config;
-        _alphabet = config.Alphabet.ToCharArray();
-        _logger = logger;
+        _config    = config;
+        _alphabet  = config.Alphabet.ToCharArray();
+        _logger    = logger;
         _httpClient = httpClient;
     }
 
     public void StartTask(WorkerTaskRequest request)
     {
-        var cts = new CancellationTokenSource();
+        var cts  = new CancellationTokenSource();
         var task = Task.Run(() => ProcessTask(request, cts.Token), cts.Token);
 
         _activeTasks[request.TaskRequestId] = (task, cts);
 
-        task.ContinueWith(completedTask =>
+        task.ContinueWith(_ =>
         {
-            _activeTasks.TryRemove(request.TaskRequestId, out _);
-            cts.Dispose();
+            _activeTasks.TryRemove(request.TaskRequestId, out var removed);
+            removed.Cts?.Dispose();
         });
     }
 
@@ -55,7 +58,6 @@ public class HashCrackService : IHashCrackService
             _logger.LogWarning("Task {TaskId} not found for cancellation", taskId);
         }
     }
-
     private async Task ProcessTask(WorkerTaskRequest request, CancellationToken ct)
     {
         try
@@ -64,15 +66,14 @@ public class HashCrackService : IHashCrackService
 
             if (request.StartIndex.HasValue && request.EndIndex.HasValue)
             {
-                // Режим переназначения — диапазон задан явно менеджером
                 startIndex = request.StartIndex.Value;
                 endIndex   = request.EndIndex.Value;
-                _logger.LogInformation("{Worker} REASSIGNED task {TaskId}: [{Start}-{End}]",
+                _logger.LogInformation(
+                    "{Worker} REASSIGNED task {TaskId}: [{Start}-{End}]",
                     _config.WorkerName, request.TaskRequestId, startIndex, endIndex);
             }
             else
             {
-                // Обычный режим — воркер считает свой диапазон сам
                 long total     = CalculateTotalCombinations(request.MaxLength);
                 long chunkSize = total / request.PartCount;
                 startIndex = (long)request.PartNumber * chunkSize;
@@ -87,10 +88,10 @@ public class HashCrackService : IHashCrackService
                     startIndex, endIndex, total);
             }
 
-            var found        = new List<string>();
-            long batchCount  = 0;   // дельта за текущий батч — сбрасывается после отправки
+            var  found        = new List<string>();
+            long batchCount   = 0;
             long currentIndex = startIndex;
-            var startTime    = DateTime.UtcNow;
+            var  startTime    = DateTime.UtcNow;
 
             for (long index = startIndex; index <= endIndex; index++)
             {
@@ -100,36 +101,36 @@ public class HashCrackService : IHashCrackService
                 var word = IndexToWord(index, request.MaxLength);
                 batchCount++;
 
-                if (CalculateMD5(word) == request.Hash)
+                if (CalculateMd5(word) == request.Hash)
                 {
                     found.Add(word);
-                    _logger.LogInformation("{Worker} found '{Word}' at index {Index}",
+                    _logger.LogInformation(
+                        "{Worker} found '{Word}' at index {Index}",
                         _config.WorkerName, word, index);
                 }
 
-                if (batchCount % REPORT_INTERVAL == 0)
+                if (batchCount % ReportInterval == 0)
                 {
-                    await SendProgress(
+                    await SendProgressWithRetry(
                         request.TaskRequestId, found,
                         batchCount, currentIndex,
                         startIndex, endIndex,
                         isCompleted: false, ct);
 
-                    var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
+                    var elapsed      = (DateTime.UtcNow - startTime).TotalSeconds;
                     var totalChecked = currentIndex - startIndex + 1;
-                    var speed = elapsed > 0 ? totalChecked / elapsed : 0;
+                    var speed        = elapsed > 0 ? totalChecked / elapsed : 0;
 
                     _logger.LogInformation(
                         "{Worker} task {TaskId}: {Checked}/{Total}, speed {Speed:F0} w/s",
                         _config.WorkerName, request.TaskRequestId,
                         totalChecked, endIndex - startIndex + 1, speed);
 
-                    batchCount = 0; // сбрасываем батч — менеджер накапливает сам через +=
+                    batchCount = 0;
                 }
             }
 
-            // Финальный батч (остаток после последней кратной REPORT_INTERVAL итерации)
-            await SendProgress(
+            await SendProgressWithRetry(
                 request.TaskRequestId, found,
                 batchCount, endIndex,
                 startIndex, endIndex,
@@ -143,12 +144,14 @@ public class HashCrackService : IHashCrackService
         }
         catch (OperationCanceledException)
         {
-            _logger.LogInformation("{Worker} task {TaskId} cancelled",
+            _logger.LogInformation(
+                "{Worker} task {TaskId} cancelled",
                 _config.WorkerName, request.TaskRequestId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "{Worker} failed task {TaskId}",
+            _logger.LogError(ex,
+                "{Worker} failed task {TaskId}",
                 _config.WorkerName, request.TaskRequestId);
         }
         finally
@@ -157,7 +160,86 @@ public class HashCrackService : IHashCrackService
         }
     }
 
-    // Считаем суммарное число комбинаций для всех длин от 1 до maxLength
+    // Повторяет отправку при сетевых ошибках.
+    // Отмена задачи (ct) прерывает ожидание между попытками.
+    private async Task SendProgressWithRetry(
+        Guid taskId,
+        List<string> foundWords,
+        long batchCheckedCount,
+        long currentIndex,
+        long rangeStart,
+        long rangeEnd,
+        bool isCompleted,
+        CancellationToken ct)
+    {
+        for (int attempt = 1; attempt <= SendMaxAttempts; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            try
+            {
+                await SendProgress(
+                    taskId, foundWords, batchCheckedCount,
+                    currentIndex, rangeStart, rangeEnd,
+                    isCompleted, ct);
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "{Worker} failed to send progress for task {TaskId}, " +
+                    "attempt {Attempt}/{Max}, retrying in {Delay}ms...",
+                    _config.WorkerName, taskId, attempt, SendMaxAttempts, SendRetryDelayMs);
+
+                if (attempt == SendMaxAttempts)
+                {
+                    _logger.LogError(
+                        "{Worker} gave up sending progress for task {TaskId} after {Max} attempts",
+                        _config.WorkerName, taskId, SendMaxAttempts);
+                    return; // Не роняем задачу — продолжаем считать
+                }
+
+                await Task.Delay(SendRetryDelayMs, ct);
+            }
+        }
+    }
+
+    private async Task SendProgress(
+        Guid taskId,
+        List<string> foundWords,
+        long batchCheckedCount,
+        long currentIndex,
+        long rangeStart,
+        long rangeEnd,
+        bool isCompleted,
+        CancellationToken ct)
+    {
+        var dto = new WorkerTaskResponse(
+            _config.WorkerId,
+            taskId,
+            new List<string>(foundWords),
+            batchCheckedCount,
+            currentIndex,
+            rangeStart,
+            rangeEnd,
+            isCompleted);
+
+        var response = await _httpClient.PostAsJsonAsync(
+            $"{_config.ManagerUrl}/internal/api/worker/result",
+            dto,
+            ct);
+
+        _logger.LogInformation(
+            "SendProgress task={TaskId} batch={Batch} currentIndex={Index} " +
+            "completed={Done} status={Status}",
+            taskId, batchCheckedCount, currentIndex, isCompleted, response.StatusCode);
+    }
+
     private long CalculateTotalCombinations(int maxLength)
     {
         long baseLen = _alphabet.Length;
@@ -165,13 +247,12 @@ public class HashCrackService : IHashCrackService
         long power   = 1;
         for (int i = 1; i <= maxLength; i++)
         {
-            power *= baseLen;   // точное целочисленное возведение в степень
+            power *= baseLen;
             total += power;
         }
         return total;
     }
 
-    // Переводит линейный индекс в слово с учётом всех длин от 1 до maxLength
     private string IndexToWord(long index, int maxLength)
     {
         long baseLen    = _alphabet.Length;
@@ -180,13 +261,13 @@ public class HashCrackService : IHashCrackService
 
         for (int wordLength = 1; wordLength <= maxLength; wordLength++)
         {
-            power *= baseLen;               // baseLen^wordLength, без погрешности
+            power *= baseLen;
             long levelSize = power;
 
             if (index < levelStart + levelSize)
             {
-                long localIndex = index - levelStart;
-                char[] chars    = new char[wordLength];
+                long   localIndex = index - levelStart;
+                char[] chars      = new char[wordLength];
 
                 for (int i = wordLength - 1; i >= 0; i--)
                 {
@@ -203,43 +284,11 @@ public class HashCrackService : IHashCrackService
         return string.Empty;
     }
 
-    private async Task SendProgress(
-        Guid taskId,
-        List<string> foundWords,
-        long batchCheckedCount,     // дельта за батч, не накопленная сумма
-        long currentIndex,
-        long rangeStart,
-        long rangeEnd,
-        bool isCompleted,
-        CancellationToken ct)
+    private static string CalculateMd5(string input)
     {
-        var dto = new WorkerTaskResponse(
-            _config.WorkerId,
-            taskId,
-            new List<string>(foundWords),   // копия, чтобы не гонять одну коллекцию
-            batchCheckedCount,
-            currentIndex,
-            rangeStart,
-            rangeEnd,
-            isCompleted
-        );
-
-        var response = await _httpClient.PostAsJsonAsync(
-            $"{_config.ManagerUrl}/internal/api/worker/result",
-            dto,
-            ct
-        );
-
-        _logger.LogInformation(
-            "SendProgress task={TaskId} batch={Batch} currentIndex={Index} completed={Done} status={Status}",
-            taskId, batchCheckedCount, currentIndex, isCompleted, response.StatusCode);
-    }
-
-    private static string CalculateMD5(string input)
-    {
-        using var md5      = MD5.Create();
-        var bytes          = Encoding.UTF8.GetBytes(input);
-        var hashBytes      = md5.ComputeHash(bytes);
+        using var md5   = MD5.Create();
+        var bytes       = Encoding.UTF8.GetBytes(input);
+        var hashBytes   = md5.ComputeHash(bytes);
         return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
     }
 }

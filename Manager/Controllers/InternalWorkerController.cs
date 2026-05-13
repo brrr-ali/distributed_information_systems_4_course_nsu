@@ -55,6 +55,13 @@ namespace Manager.ManagerController
             return Ok();
         }
 
+        [HttpGet("register/{workerId}")]
+        public IActionResult IsRegistered(Guid workerId)
+        {
+            var workers = _managerService.GetAllWorkers();
+            var known   = workers.Any(w => w.WorkerId == workerId);
+            return known ? Ok() : NotFound();
+        }
+
     }
-    
 }

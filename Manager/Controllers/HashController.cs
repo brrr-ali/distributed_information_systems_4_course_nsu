@@ -2,7 +2,7 @@
 using Manager.DTO;
 using System.Text.Json;
 using Manager.Services;
-
+using Shared.DTO;
 
 
 namespace Manager.ManagerController
@@ -62,6 +62,13 @@ namespace Manager.ManagerController
                 _logger.LogError(ex, "Error getting status for {requestId}", requestId);
                 return StatusCode(500, "Internal server error");
             }
+        }
+        
+        [HttpPost("cancel")]
+        public async Task<IActionResult> CancelCrackTask([FromBody] CancelTaskRequest request)
+        {
+            await _managerService.CancelTask(request.TaskId);
+            return Ok();
         }
     }
     
