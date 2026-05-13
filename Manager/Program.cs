@@ -2,43 +2,50 @@ using Manager.Models;
 using Manager.Services;
 using Microsoft.Extensions.Options;
 
-var builder = WebApplication.CreateBuilder(args);
 
-var config = new ManagerConfig
+public class Program
 {
-    WorkerNumber = int.Parse(Environment.GetEnvironmentVariable("WORKER_NUMBER") ?? "3"),
-    Alphabet = Environment.GetEnvironmentVariable("ALPHABET") ?? "abcdefghijklmnopqrstuvwxyz0123456789",
-    CheckInterval = TimeSpan.FromSeconds(
-        int.Parse(Environment.GetEnvironmentVariable("CHECK_INTERVAL_SEC") ?? "60")),
-    TaskTimeout = TimeSpan.FromMinutes(
-        int.Parse(Environment.GetEnvironmentVariable("TASK_TIMEOUT_MIN") ?? "2"))
-};
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
 
-// Register Configuration
-builder.Services.AddSingleton(Options.Create(config)); 
+        var config = new ManagerConfig
+        {
+            WorkerNumber = int.Parse(Environment.GetEnvironmentVariable("WORKER_NUMBER") ?? "3"),
+            Alphabet = Environment.GetEnvironmentVariable("ALPHABET") ?? "abcdefghijklmnopqrstuvwxyz0123456789",
+            CheckInterval = TimeSpan.FromSeconds(
+                int.Parse(Environment.GetEnvironmentVariable("CHECK_INTERVAL_SEC") ?? "60")),
+            TaskTimeout = TimeSpan.FromMinutes(
+                int.Parse(Environment.GetEnvironmentVariable("TASK_TIMEOUT_MIN") ?? "2"))
+        };
 
-// Controllers
-builder.Services.AddControllers();
+        // Register Configuration
+        builder.Services.AddSingleton(Options.Create(config));
 
-// Swagger
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+        // Controllers
+        builder.Services.AddControllers();
+
+        // Swagger
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
 
 
-// Services
-builder.Services.AddSingleton<IManagerService, ManagerService>();
-builder.Services.AddHostedService<WorkerHealthCheckService>();
-builder.Services.AddHostedService<TaskTimeoutService>();
+        // Services
+        builder.Services.AddSingleton<IManagerService, ManagerService>();
+        builder.Services.AddHostedService<WorkerHealthCheckService>();
+        builder.Services.AddHostedService<TaskTimeoutService>();
 
-builder.Services.AddHttpClient();
+        builder.Services.AddHttpClient();
 
-var app = builder.Build();
+        var app = builder.Build();
 
-// Swagger
-app.UseSwagger();
-app.UseSwaggerUI();
+        // Swagger
+        app.UseSwagger();
+        app.UseSwaggerUI();
 
-app.UseStaticFiles();
-app.MapControllers();
+        app.UseStaticFiles();
+        app.MapControllers();
 
-app.Run();
+        app.Run();
+    }
+}

@@ -1,601 +1,802 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>CrackHash</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Sora:wght@400;500;600&display=swap" rel="stylesheet"/>
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CrackHash</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Sora:wght@400;500;600&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-  body {
-    font-family: 'Sora', sans-serif;
-    background: #f0ede8;
-    color: #1a1a1a;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
+    body {
+      font-family: 'Sora', sans-serif;
+      background: #f0ede8;
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
-  header {
-    background: #1a1a1a;
-    padding: 0 32px;
-    height: 52px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky; top: 0; z-index: 10;
-  }
-  header h1 { font-size: .9rem; font-weight: 600; color: #fff; letter-spacing: .02em; }
-  header h1 span { color: #666; font-weight: 400; }
+    header {
+      background: #1a1a1a;
+      padding: 0 32px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
 
-  .conn-badge {
-    font-size: .7rem;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-weight: 500;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .conn-badge.ok  { background: #d4edda; color: #1a5c2e; }
-  .conn-badge.err { background: #2a1a1a; color: #e57373; border: 1px solid #3a2222; }
+    header h1 {
+      font-size: .9rem;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: .02em;
+    }
 
-  .layout {
-    display: grid;
-    grid-template-columns: 300px 1fr;
-    flex: 1;
-    max-width: 1060px;
-    margin: 28px auto;
-    width: 100%;
-    gap: 20px;
-    padding: 0 20px;
-  }
+    header h1 span {
+      color: #666;
+      font-weight: 400;
+    }
 
-  .sidebar { display: flex; flex-direction: column; gap: 16px; }
+    .conn-badge {
+      font-size: .7rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+      font-family: 'JetBrains Mono', monospace;
+    }
 
-  .card {
-    background: #fff;
-    border: 1px solid #e0dcd5;
-    border-radius: 10px;
-    padding: 20px;
-  }
+    .conn-badge.ok {
+      background: #d4edda;
+      color: #1a5c2e;
+    }
 
-  .card-title {
-    font-size: .65rem;
-    font-weight: 600;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    color: #999;
-    margin-bottom: 16px;
-  }
+    .conn-badge.err {
+      background: #2a1a1a;
+      color: #e57373;
+      border: 1px solid #3a2222;
+    }
 
-  .field { margin-bottom: 14px; }
-  .field label {
-    display: block;
-    font-size: .75rem;
-    font-weight: 500;
-    color: #666;
-    margin-bottom: 5px;
-  }
-  input[type="text"], input[type="number"] {
-    width: 100%;
-    padding: 8px 11px;
-    border: 1px solid #e0dcd5;
-    border-radius: 6px;
-    font-size: .82rem;
-    font-family: 'Sora', sans-serif;
-    outline: none;
-    transition: border-color .15s;
-    background: #faf9f7;
-    color: #1a1a1a;
-  }
-  input:focus { border-color: #1a1a1a; background: #fff; }
-  input[type="text"].mono { font-family: 'JetBrains Mono', monospace; font-size: .78rem; }
+    .layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      flex: 1;
+      max-width: 1060px;
+      margin: 28px auto;
+      width: 100%;
+      gap: 20px;
+      padding: 0 20px;
+    }
 
-  .presets {
-    display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px;
-  }
-  .preset {
-    font-size: .68rem;
-    padding: 2px 8px;
-    border: 1px solid #e0dcd5;
-    border-radius: 4px;
-    background: none;
-    cursor: pointer;
-    color: #777;
-    font-family: 'JetBrains Mono', monospace;
-    transition: border-color .15s, color .15s, background .15s;
-  }
-  .preset:hover { border-color: #1a1a1a; color: #1a1a1a; background: #f5f2ee; }
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
 
-  .btn-primary {
-    width: 100%;
-    padding: 9px;
-    background: #1a1a1a;
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    font-size: .82rem;
-    font-weight: 500;
-    font-family: 'Sora', inherit;
-    cursor: pointer;
-    margin-top: 2px;
-    transition: opacity .15s, transform .1s;
-  }
-  .btn-primary:hover { opacity: .85; }
-  .btn-primary:active { transform: scale(.98); }
-  .btn-primary:disabled { opacity: .35; cursor: not-allowed; }
+    .card {
+      background: #fff;
+      border: 1px solid #e0dcd5;
+      border-radius: 10px;
+      padding: 20px;
+    }
 
-  .hash-row { display: flex; gap: 6px; align-items: stretch; }
-  .hash-row input { flex: 1; }
+    .card-title {
+      font-size: .65rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #999;
+      margin-bottom: 16px;
+    }
 
-  .hash-result {
-    margin-top: 10px;
-    display: none;
-    background: #f5f2ee;
-    border: 1px solid #e0dcd5;
-    border-radius: 6px;
-    padding: 9px 11px;
-  }
-  .hash-result.visible { display: block; }
-  .hash-result-label { font-size: .68rem; color: #999; margin-bottom: 3px; }
-  .hash-result-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: .78rem;
-    color: #1a1a1a;
-    word-break: break-all;
-  }
-  .hash-actions { display: flex; gap: 6px; margin-top: 8px; }
+    .field {
+      margin-bottom: 14px;
+    }
 
-  .btn-sm {
-    flex: 1;
-    padding: 6px 10px;
-    font-size: .72rem;
-    font-family: 'Sora', sans-serif;
-    font-weight: 500;
-    border-radius: 5px;
-    cursor: pointer;
-    border: 1px solid #e0dcd5;
-    background: none;
-    color: #555;
-    transition: background .15s, color .15s, border-color .15s;
-    white-space: nowrap;
-  }
-  .btn-sm:hover { background: #f5f2ee; border-color: #ccc; color: #1a1a1a; }
-  .btn-sm.accent { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-  .btn-sm.accent:hover { opacity: .85; }
+    .field label {
+      display: block;
+      font-size: .75rem;
+      font-weight: 500;
+      color: #666;
+      margin-bottom: 5px;
+    }
 
-  .lookup-row { display: flex; gap: 6px; align-items: stretch; }
-  .lookup-row input { flex: 1; }
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 8px 11px;
+      border: 1px solid #e0dcd5;
+      border-radius: 6px;
+      font-size: .82rem;
+      font-family: 'Sora', sans-serif;
+      outline: none;
+      transition: border-color .15s;
+      background: #faf9f7;
+      color: #1a1a1a;
+    }
 
-  .lookup-result {
-    margin-top: 10px;
-    display: none;
-    background: #f5f2ee;
-    border: 1px solid #e0dcd5;
-    border-radius: 6px;
-    padding: 10px 12px;
-    font-size: .8rem;
-  }
-  .lookup-result.visible { display: block; }
-  .lookup-progress { color: #1565c0; }
-  .lookup-ready    { color: #2e7d32; font-weight: 500; }
-  .lookup-partial  { color: #e65100; font-weight: 500; }
-  .lookup-error    { color: #c62828; }
+    input:focus {
+      border-color: #1a1a1a;
+      background: #fff;
+    }
 
-  .tasks-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-  }
-  .btn-ghost {
-    font-size: .72rem;
-    padding: 3px 9px;
-    border: 1px solid #e0dcd5;
-    border-radius: 5px;
-    background: none;
-    cursor: pointer;
-    color: #aaa;
-    font-family: 'Sora', sans-serif;
-    transition: color .15s, border-color .15s;
-  }
-  .btn-ghost:hover { color: #e53935; border-color: #e53935; }
+    input[type="text"].mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .78rem;
+    }
 
-  .empty {
-    text-align: center;
-    padding: 44px 0;
-    color: #c0bdb8;
-    font-size: .82rem;
-  }
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 7px;
+    }
 
-  .task-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 12px;
-    align-items: start;
-    padding: 14px 0;
-    border-bottom: 1px solid #f0ede8;
-  }
-  .task-row:last-child { border-bottom: none; }
+    .preset {
+      font-size: .68rem;
+      padding: 2px 8px;
+      border: 1px solid #e0dcd5;
+      border-radius: 4px;
+      background: none;
+      cursor: pointer;
+      color: #777;
+      font-family: 'JetBrains Mono', monospace;
+      transition: border-color .15s, color .15s, background .15s;
+    }
 
-  .task-hash {
-    font-size: .72rem;
-    color: #bbb;
-    font-family: 'JetBrains Mono', monospace;
-    margin-bottom: 3px;
-    word-break: break-all;
-  }
+    .preset:hover {
+      border-color: #1a1a1a;
+      color: #1a1a1a;
+      background: #f5f2ee;
+    }
 
-  .task-id-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 6px;
-  }
-  .task-id-label { font-size: .65rem; color: #bbb; }
-  .task-id-value {
-    font-size: .68rem;
-    font-family: 'JetBrains Mono', monospace;
-    color: #888;
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .btn-copy-id {
-    font-size: .65rem;
-    padding: 1px 6px;
-    border: 1px solid #e0dcd5;
-    border-radius: 3px;
-    background: none;
-    cursor: pointer;
-    color: #bbb;
-    font-family: 'Sora', sans-serif;
-    transition: color .15s, border-color .15s, background .15s;
-    flex-shrink: 0;
-  }
-  .btn-copy-id:hover { color: #1a1a1a; border-color: #1a1a1a; background: #f5f2ee; }
-  .btn-copy-id.copied { color: #2e7d32; border-color: #c8e6c9; background: #e8f5e9; }
+    .btn-primary {
+      width: 100%;
+      padding: 9px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: .82rem;
+      font-weight: 500;
+      font-family: 'Sora', inherit;
+      cursor: pointer;
+      margin-top: 2px;
+      transition: opacity .15s, transform .1s;
+    }
 
-  .task-info {
-    font-size: .78rem;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 6px;
-  }
+    .btn-primary:hover {
+      opacity: .85;
+    }
 
-  .badge {
-    font-size: .64rem;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 4px;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-  }
-  .badge-progress { background: #e3f2fd;  color: #1565c0; }
-  .badge-ready    { background: #e8f5e9;  color: #2e7d32; }
-  .badge-partial  { background: #fff3e0;  color: #e65100; }
-  .badge-error    { background: #fce4ec;  color: #c62828; }
+    .btn-primary:active {
+      transform: scale(.98);
+    }
 
-  .bar-wrap {
-    height: 2px;
-    background: #f0ede8;
-    border-radius: 2px;
-    overflow: hidden;
-    margin-bottom: 7px;
-  }
-  .bar-fill {
-    height: 100%;
-    border-radius: 2px;
-    background: #1a1a1a;
-    transition: width .6s ease;
-  }
-  .bar-fill.ready   { background: #43a047; }
-  .bar-fill.partial { background: #fb8c00; }
-  .bar-fill.error   { background: #e53935; }
+    .btn-primary:disabled {
+      opacity: .35;
+      cursor: not-allowed;
+    }
 
-  .task-result { font-size: .8rem; }
-  .task-result.found   { color: #2e7d32; font-weight: 600; }
-  .task-result.partial { color: #e65100; font-weight: 600; }
-  .task-result.none    { color: #bbb; }
-  .task-result.err     { color: #c62828; }
+    .hash-row {
+      display: flex;
+      gap: 6px;
+      align-items: stretch;
+    }
 
-  .task-side {
-    display: flex; flex-direction: column;
-    align-items: flex-end; gap: 5px;
-  }
-  .task-elapsed { font-size: .68rem; color: #ccc; font-family: 'JetBrains Mono', monospace; }
+    .hash-row input {
+      flex: 1;
+    }
 
-  .btn-cancel {
-    font-size: .68rem;
-    padding: 2px 7px;
-    border: 1px solid #fce4ec;
-    border-radius: 4px;
-    background: none;
-    color: #e53935;
-    cursor: pointer;
-    font-family: 'Sora', sans-serif;
-    transition: background .15s;
-  }
-  .btn-cancel:hover { background: #fce4ec; }
-</style>
+    .hash-result {
+      margin-top: 10px;
+      display: none;
+      background: #f5f2ee;
+      border: 1px solid #e0dcd5;
+      border-radius: 6px;
+      padding: 9px 11px;
+    }
+
+    .hash-result.visible {
+      display: block;
+    }
+
+    .hash-result-label {
+      font-size: .68rem;
+      color: #999;
+      margin-bottom: 3px;
+    }
+
+    .hash-result-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .78rem;
+      color: #1a1a1a;
+      word-break: break-all;
+    }
+
+    .hash-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .btn-sm {
+      flex: 1;
+      padding: 6px 10px;
+      font-size: .72rem;
+      font-family: 'Sora', sans-serif;
+      font-weight: 500;
+      border-radius: 5px;
+      cursor: pointer;
+      border: 1px solid #e0dcd5;
+      background: none;
+      color: #555;
+      transition: background .15s, color .15s, border-color .15s;
+      white-space: nowrap;
+    }
+
+    .btn-sm:hover {
+      background: #f5f2ee;
+      border-color: #ccc;
+      color: #1a1a1a;
+    }
+
+    .btn-sm.accent {
+      background: #1a1a1a;
+      color: #fff;
+      border-color: #1a1a1a;
+    }
+
+    .btn-sm.accent:hover {
+      opacity: .85;
+    }
+
+    .lookup-row {
+      display: flex;
+      gap: 6px;
+      align-items: stretch;
+    }
+
+    .lookup-row input {
+      flex: 1;
+    }
+
+    .lookup-result {
+      margin-top: 10px;
+      display: none;
+      background: #f5f2ee;
+      border: 1px solid #e0dcd5;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: .8rem;
+    }
+
+    .lookup-result.visible {
+      display: block;
+    }
+
+    .lookup-progress {
+      color: #1565c0;
+    }
+
+    .lookup-ready {
+      color: #2e7d32;
+      font-weight: 500;
+    }
+
+    .lookup-partial {
+      color: #e65100;
+      font-weight: 500;
+    }
+
+    .lookup-error {
+      color: #c62828;
+    }
+
+    .tasks-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .btn-ghost {
+      font-size: .72rem;
+      padding: 3px 9px;
+      border: 1px solid #e0dcd5;
+      border-radius: 5px;
+      background: none;
+      cursor: pointer;
+      color: #aaa;
+      font-family: 'Sora', sans-serif;
+      transition: color .15s, border-color .15s;
+    }
+
+    .btn-ghost:hover {
+      color: #e53935;
+      border-color: #e53935;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 44px 0;
+      color: #c0bdb8;
+      font-size: .82rem;
+    }
+
+    .task-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: start;
+      padding: 14px 0;
+      border-bottom: 1px solid #f0ede8;
+    }
+
+    .task-row:last-child {
+      border-bottom: none;
+    }
+
+    .task-hash {
+      font-size: .72rem;
+      color: #bbb;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 3px;
+      word-break: break-all;
+    }
+
+    .task-id-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .task-id-label {
+      font-size: .65rem;
+      color: #bbb;
+    }
+
+    .task-id-value {
+      font-size: .68rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: #888;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-copy-id {
+      font-size: .65rem;
+      padding: 1px 6px;
+      border: 1px solid #e0dcd5;
+      border-radius: 3px;
+      background: none;
+      cursor: pointer;
+      color: #bbb;
+      font-family: 'Sora', sans-serif;
+      transition: color .15s, border-color .15s, background .15s;
+      flex-shrink: 0;
+    }
+
+    .btn-copy-id:hover {
+      color: #1a1a1a;
+      border-color: #1a1a1a;
+      background: #f5f2ee;
+    }
+
+    .btn-copy-id.copied {
+      color: #2e7d32;
+      border-color: #c8e6c9;
+      background: #e8f5e9;
+    }
+
+    .task-info {
+      font-size: .78rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .badge {
+      font-size: .64rem;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .badge-progress {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+
+    .badge-ready {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .badge-partial {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    .badge-error {
+      background: #fce4ec;
+      color: #c62828;
+    }
+
+    .bar-wrap {
+      height: 2px;
+      background: #f0ede8;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 7px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: #1a1a1a;
+      transition: width .6s ease;
+    }
+
+    .bar-fill.ready {
+      background: #43a047;
+    }
+
+    .bar-fill.partial {
+      background: #fb8c00;
+    }
+
+    .bar-fill.error {
+      background: #e53935;
+    }
+
+    .task-result {
+      font-size: .8rem;
+    }
+
+    .task-result.found {
+      color: #2e7d32;
+      font-weight: 600;
+    }
+
+    .task-result.partial {
+      color: #e65100;
+      font-weight: 600;
+    }
+
+    .task-result.none {
+      color: #bbb;
+    }
+
+    .task-result.err {
+      color: #c62828;
+    }
+
+    .task-side {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+    }
+
+    .task-elapsed {
+      font-size: .68rem;
+      color: #ccc;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .btn-cancel {
+      font-size: .68rem;
+      padding: 2px 7px;
+      border: 1px solid #fce4ec;
+      border-radius: 4px;
+      background: none;
+      color: #e53935;
+      cursor: pointer;
+      font-family: 'Sora', sans-serif;
+      transition: background .15s;
+    }
+
+    .btn-cancel:hover {
+      background: #fce4ec;
+    }
+  </style>
 </head>
+
 <body>
 
-<header>
-  <h1>CrackHash <span>/ GUI</span></h1>
-  <div class="conn-badge err" id="conn">нет соединения</div>
-</header>
+  <header>
+    <h1>CrackHash <span>/ GUI</span></h1>
+    <div class="conn-badge err" id="conn">нет соединения</div>
+  </header>
 
-<div class="layout">
-  <div class="sidebar">
+  <div class="layout">
+    <div class="sidebar">
 
-    <div class="card">
-      <div class="card-title">Слово → MD5</div>
-      <div class="field">
-        <label>Пароль для хэширования</label>
-        <div class="hash-row">
-          <input id="word-input" type="text" placeholder="например, abcd" oninput="calcHash()"/>
+      <div class="card">
+        <div class="card-title">Слово → MD5</div>
+        <div class="field">
+          <label>Пароль для хэширования</label>
+          <div class="hash-row">
+            <input id="word-input" type="text" placeholder="например, abcd" oninput="calcHash()" />
+          </div>
+        </div>
+        <div class="hash-result" id="hash-result">
+          <div class="hash-result-label">MD5 хэш</div>
+          <div class="hash-result-value" id="hash-display"></div>
+          <div class="hash-actions">
+            <button class="btn-sm" onclick="copyHash()">Скопировать</button>
+            <button class="btn-sm accent" onclick="sendToForm()">→ Взломать</button>
+          </div>
         </div>
       </div>
-      <div class="hash-result" id="hash-result">
-        <div class="hash-result-label">MD5 хэш</div>
-        <div class="hash-result-value" id="hash-display"></div>
-        <div class="hash-actions">
-          <button class="btn-sm" onclick="copyHash()">Скопировать</button>
-          <button class="btn-sm accent" onclick="sendToForm()">→ Взломать</button>
+
+      <div class="card">
+        <div class="card-title">Новая задача</div>
+        <div class="field">
+          <label>MD5 хэш</label>
+          <input id="hash-input" class="mono" type="text" placeholder="e2fc714c4727ee9395f324cd2e7f331f"
+            maxlength="32" />
+          <div class="presets">
+            <button class="preset" onclick="preset('e2fc714c4727ee9395f324cd2e7f331f',4)">abcd</button>
+            <button class="preset" onclick="preset('900150983cd24fb0d6963f7d28e17f72',3)">abc</button>
+            <button class="preset" onclick="preset('0cc175b9c0f1b6a831c399e269772661',1)">a</button>
+            <button class="preset" onclick="preset('cfcd208495d565ef66e7dff9f98764da',1)">0</button>
+          </div>
         </div>
+        <div class="field">
+          <label>Макс. длина слова</label>
+          <input id="len-input" type="number" value="4" min="1" max="8" />
+        </div>
+        <button class="btn-primary" id="crack-btn" onclick="submitCrack()">Взломать</button>
       </div>
+
+      <div class="card">
+        <div class="card-title">Статус по Request ID</div>
+        <div class="field">
+          <label>Request ID</label>
+          <div class="lookup-row">
+            <input id="lookup-input" class="mono" type="text" placeholder="вставьте requestId…" />
+          </div>
+        </div>
+        <button class="btn-primary" onclick="lookupStatus()">Проверить</button>
+        <div class="lookup-result" id="lookup-result"></div>
+      </div>
+
     </div>
 
-    <div class="card">
-      <div class="card-title">Новая задача</div>
-      <div class="field">
-        <label>MD5 хэш</label>
-        <input id="hash-input" class="mono" type="text"
-               placeholder="e2fc714c4727ee9395f324cd2e7f331f" maxlength="32"/>
-        <div class="presets">
-          <button class="preset" onclick="preset('e2fc714c4727ee9395f324cd2e7f331f',4)">abcd</button>
-          <button class="preset" onclick="preset('900150983cd24fb0d6963f7d28e17f72',3)">abc</button>
-          <button class="preset" onclick="preset('0cc175b9c0f1b6a831c399e269772661',1)">a</button>
-          <button class="preset" onclick="preset('cfcd208495d565ef66e7dff9f98764da',1)">0</button>
-        </div>
+    <div class="card" style="align-self:start;">
+      <div class="tasks-header">
+        <div class="card-title" style="margin:0">Задачи</div>
+        <button class="btn-ghost" onclick="clearDone()">Очистить завершённые</button>
       </div>
-      <div class="field">
-        <label>Макс. длина слова</label>
-        <input id="len-input" type="number" value="4" min="1" max="8"/>
+      <div id="tasks-list">
+        <div class="empty">Задач пока нет</div>
       </div>
-      <button class="btn-primary" id="crack-btn" onclick="submitCrack()">Взломать</button>
     </div>
-
-    <div class="card">
-      <div class="card-title">Статус по Request ID</div>
-      <div class="field">
-        <label>Request ID</label>
-        <div class="lookup-row">
-          <input id="lookup-input" class="mono" type="text" placeholder="вставьте requestId…"/>
-        </div>
-      </div>
-      <button class="btn-primary" onclick="lookupStatus()">Проверить</button>
-      <div class="lookup-result" id="lookup-result"></div>
-    </div>
-
   </div>
 
-  <div class="card" style="align-self:start;">
-    <div class="tasks-header">
-      <div class="card-title" style="margin:0">Задачи</div>
-      <button class="btn-ghost" onclick="clearDone()">Очистить завершённые</button>
-    </div>
-    <div id="tasks-list">
-      <div class="empty">Задач пока нет</div>
-    </div>
-  </div>
-</div>
+  <script>
+    const MANAGER = 'http://localhost:8080';
+    const tasks = new Map();
+    let currentHash = '';
 
-<script>
-const MANAGER = 'http://localhost:8080';
-const tasks   = new Map();
-let currentHash = '';
+    async function calcHash() {
+      const input = document.getElementById('word-input').value.trim();
+      const box = document.getElementById('hash-result');
+      const display = document.getElementById('hash-display');
 
-async function calcHash() {
-  const input   = document.getElementById('word-input').value.trim();
-  const box     = document.getElementById('hash-result');
-  const display = document.getElementById('hash-display');
+      if (!input) {
+        currentHash = '';
+        display.textContent = '';
+        box.classList.remove('visible');
+        return;
+      }
 
-  if (!input) {
-    currentHash = '';
-    display.textContent = '';
-    box.classList.remove('visible');
-    return;
-  }
-
-  currentHash         = md5(input);
-  display.textContent = currentHash;
-  box.classList.add('visible');
-}
-
-function copyHash() {
-  if (currentHash) navigator.clipboard.writeText(currentHash).catch(() => {});
-}
-
-function sendToForm() {
-  if (!currentHash) return;
-  const word = document.getElementById('word-input').value;
-  const len  = Math.max(word.length, parseInt(document.getElementById('len-input').value) || 4);
-  document.getElementById('hash-input').value = currentHash;
-  document.getElementById('len-input').value  = len;
-  document.getElementById('hash-input').scrollIntoView({behavior: 'smooth', block: 'nearest'});
-}
-
-function preset(hash, len) {
-  document.getElementById('hash-input').value = hash;
-  document.getElementById('len-input').value  = len;
-}
-
-async function submitCrack() {
-  const hash   = document.getElementById('hash-input').value.trim();
-  const maxLen = parseInt(document.getElementById('len-input').value, 10);
-  if (hash.length !== 32) { alert('Введи корректный MD5 хэш (32 символа)'); return; }
-
-  const btn = document.getElementById('crack-btn');
-  btn.disabled = true;
-  try {
-    const res  = await fetch(`${MANAGER}/api/hash/crack`, {
-      method:  'POST',
-      headers: {'Content-Type': 'application/json'},
-      body:    JSON.stringify({hash, maxLength: maxLen}),
-    });
-    const body = await res.json();
-    const id   = body.requestId ?? body.RequestId;
-    if (!id) throw new Error('Нет requestId в ответе');
-
-    tasks.set(id, {
-      id, hash, maxLen,
-      status:    'IN_PROGRESS',
-      progress:  0,
-      data:      null,
-      startedAt: Date.now(),
-    });
-    renderTasks();
-  } catch (e) {
-    alert('Ошибка: ' + e.message);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function lookupStatus() {
-  const id  = document.getElementById('lookup-input').value.trim();
-  const box = document.getElementById('lookup-result');
-  if (!id) { box.classList.remove('visible'); return; }
-
-  box.classList.add('visible');
-  box.innerHTML = '<span style="color:#aaa">Загрузка…</span>';
-
-  try {
-    const res      = await fetch(`${MANAGER}/api/hash/status?requestId=${encodeURIComponent(id)}`);
-    const body     = await res.json();
-    const status   = body.status   ?? '—';
-    const progress = body.progress ?? 0;
-    const data     = body.data;
-
-    if (status === 'READY') {
-      const found = data?.length
-        ? `<b>Найдено:</b> ${data.join(', ')}`
-        : 'Слово не найдено';
-      box.innerHTML = `<div class="lookup-ready">✓ Готово · ${found}</div>`;
-    } else if (status === 'PARTIAL') {
-      const found = data?.length
-        ? `<b>Найдено:</b> ${data.join(', ')}`
-        : 'Слов не найдено';
-      box.innerHTML = `<div class="lookup-partial">⚠ Частичный результат · ${found}</div>`;
-    } else if (status === 'IN_PROGRESS') {
-      box.innerHTML = `<div class="lookup-progress">⏳ В процессе · ${progress}%</div>`;
-    } else if (status === 'ERROR') {
-      box.innerHTML = `<div class="lookup-error">✕ Ошибка или таймаут</div>`;
-    } else {
-      box.innerHTML = `<div style="color:#888">Статус: ${status}</div>`;
-    }
-  } catch (e) {
-    box.innerHTML = `<div class="lookup-error">Не удалось получить статус</div>`;
-  }
-}
-
-async function cancelTask(id) {
-  try {
-    await fetch(`${MANAGER}/api/hash/cancel`, {
-      method:  'POST',
-      headers: {'Content-Type': 'application/json'},
-      body:    JSON.stringify({taskId: id}),
-    });
-  } catch (_) {}
-  const t = tasks.get(id);
-  if (t) { t.status = 'ERROR'; renderTasks(); }
-}
-
-function clearDone() {
-  for (const [id, t] of tasks)
-    if (t.status !== 'IN_PROGRESS') tasks.delete(id);
-  renderTasks();
-}
-
-async function poll() {
-  const active = [...tasks.values()].filter(t => t.status === 'IN_PROGRESS');
-  await Promise.all(active.map(async t => {
-    try {
-      const res  = await fetch(`${MANAGER}/api/hash/status?requestId=${t.id}`);
-      const body = await res.json();
-      t.status   = body.status   ?? t.status;
-      t.progress = body.progress ?? t.progress;
-      t.data     = body.data;
-    } catch (_) {}
-  }));
-  if (active.length) renderTasks();
-}
-
-function copyId(id) {
-  navigator.clipboard.writeText(id).catch(() => {});
-  const btn = document.getElementById('cpbtn-' + id);
-  if (!btn) return;
-  btn.textContent = 'скопировано';
-  btn.classList.add('copied');
-  setTimeout(() => { btn.textContent = 'копировать'; btn.classList.remove('copied'); }, 1800);
-}
-
-function renderTasks() {
-  const container = document.getElementById('tasks-list');
-
-  if (!tasks.size) {
-    container.innerHTML = '<div class="empty">Задач пока нет</div>';
-    return;
-  }
-  if (container.querySelector('.empty')) container.innerHTML = '';
-
-  for (const t of [...tasks.values()].reverse()) {
-    let row = document.getElementById('row-' + t.id);
-    if (!row) {
-      row           = document.createElement('div');
-      row.className = 'task-row';
-      row.id        = 'row-' + t.id;
-      container.prepend(row);
+      currentHash = md5(input);
+      display.textContent = currentHash;
+      box.classList.add('visible');
     }
 
-    const cls = t.status === 'READY'       ? 'ready'    :
-                t.status === 'PARTIAL'     ? 'partial'  :
-                t.status === 'ERROR'       ? 'error'    : 'progress';
-
-    const label = {
-      IN_PROGRESS : 'В процессе',
-      READY       : 'Готово',
-      PARTIAL     : 'Частично',
-      ERROR       : 'Ошибка',
-    }[t.status] ?? t.status;
-
-    let result = '';
-    if (t.status === 'READY') {
-      result = t.data?.length
-        ? `<div class="task-result found">Найдено: ${t.data.join(', ')}</div>`
-        : `<div class="task-result none">Слово не найдено (длина ≤ ${t.maxLen})</div>`;
-    } else if (t.status === 'PARTIAL') {
-      result = t.data?.length
-        ? `<div class="task-result partial">⚠ Частично: ${t.data.join(', ')}</div>`
-        : `<div class="task-result none">⚠ Частичный результат, слов не найдено</div>`;
-    } else if (t.status === 'ERROR') {
-      result = `<div class="task-result err">Ошибка или таймаут</div>`;
+    function copyHash() {
+      if (currentHash) navigator.clipboard.writeText(currentHash).catch(() => { });
     }
 
-    const cancelBtn = t.status === 'IN_PROGRESS'
-      ? `<button class="btn-cancel" onclick="cancelTask('${t.id}')">Отменить</button>`
-      : '';
+    function sendToForm() {
+      if (!currentHash) return;
+      const word = document.getElementById('word-input').value;
+      const len = Math.max(word.length, parseInt(document.getElementById('len-input').value) || 4);
+      document.getElementById('hash-input').value = currentHash;
+      document.getElementById('len-input').value = len;
+      document.getElementById('hash-input').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 
-    const shortId = t.id.length > 20
-      ? t.id.slice(0, 8) + '…' + t.id.slice(-4)
-      : t.id;
+    function preset(hash, len) {
+      document.getElementById('hash-input').value = hash;
+      document.getElementById('len-input').value = len;
+    }
 
-    row.innerHTML = `
+    async function submitCrack() {
+      const hash = document.getElementById('hash-input').value.trim();
+      const maxLen = parseInt(document.getElementById('len-input').value, 10);
+      if (hash.length !== 32) { alert('Введи корректный MD5 хэш (32 символа)'); return; }
+
+      const btn = document.getElementById('crack-btn');
+      btn.disabled = true;
+      try {
+        const res = await fetch(`${MANAGER}/api/hash/crack`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hash, maxLength: maxLen }),
+        });
+        const body = await res.json();
+        const id = body.requestId ?? body.RequestId;
+        if (!id) throw new Error('Нет requestId в ответе');
+
+        tasks.set(id, {
+          id, hash, maxLen,
+          status: 'IN_PROGRESS',
+          progress: 0,
+          data: null,
+          startedAt: Date.now(),
+        });
+        renderTasks();
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function lookupStatus() {
+      const id = document.getElementById('lookup-input').value.trim();
+      const box = document.getElementById('lookup-result');
+      if (!id) { box.classList.remove('visible'); return; }
+
+      box.classList.add('visible');
+      box.innerHTML = '<span style="color:#aaa">Загрузка…</span>';
+
+      try {
+        const res = await fetch(`${MANAGER}/api/hash/status?requestId=${encodeURIComponent(id)}`);
+        const body = await res.json();
+        const status = body.status ?? '—';
+        const progress = body.progress ?? 0;
+        const data = body.data;
+
+        if (status === 'READY') {
+          const found = data?.length
+            ? `<b>Найдено:</b> ${data.join(', ')}`
+            : 'Слово не найдено';
+          box.innerHTML = `<div class="lookup-ready">✓ Готово · ${found}</div>`;
+        } else if (status === 'PARTIAL') {
+          const found = data?.length
+            ? `<b>Найдено:</b> ${data.join(', ')}`
+            : 'Слов не найдено';
+          box.innerHTML = `<div class="lookup-partial">⚠ Частичный результат · ${found}</div>`;
+        } else if (status === 'IN_PROGRESS') {
+          box.innerHTML = `<div class="lookup-progress">⏳ В процессе · ${progress}%</div>`;
+        } else if (status === 'ERROR') {
+          box.innerHTML = `<div class="lookup-error">✕ Ошибка или таймаут</div>`;
+        } else {
+          box.innerHTML = `<div style="color:#888">Статус: ${status}</div>`;
+        }
+      } catch (e) {
+        box.innerHTML = `<div class="lookup-error">Не удалось получить статус</div>`;
+      }
+    }
+
+    async function cancelTask(id) {
+      try {
+        await fetch(`${MANAGER}/api/hash/cancel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId: id }),
+        });
+      } catch (_) { }
+      const t = tasks.get(id);
+      if (t) { t.status = 'ERROR'; renderTasks(); }
+    }
+
+    function clearDone() {
+      for (const [id, t] of tasks)
+        if (t.status !== 'IN_PROGRESS') tasks.delete(id);
+      renderTasks();
+    }
+
+    async function poll() {
+      const active = [...tasks.values()].filter(t => t.status === 'IN_PROGRESS');
+      await Promise.all(active.map(async t => {
+        try {
+          const res = await fetch(`${MANAGER}/api/hash/status?requestId=${t.id}`);
+          const body = await res.json();
+          t.status = body.status ?? t.status;
+          t.progress = body.progress ?? t.progress;
+          t.data = body.data;
+        } catch (_) { }
+      }));
+      if (active.length) renderTasks();
+    }
+
+    function copyId(id) {
+      navigator.clipboard.writeText(id).catch(() => { });
+      const btn = document.getElementById('cpbtn-' + id);
+      if (!btn) return;
+      btn.textContent = 'скопировано';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'копировать'; btn.classList.remove('copied'); }, 1800);
+    }
+
+    function renderTasks() {
+      const container = document.getElementById('tasks-list');
+
+      if (!tasks.size) {
+        container.innerHTML = '<div class="empty">Задач пока нет</div>';
+        return;
+      }
+      if (container.querySelector('.empty')) container.innerHTML = '';
+
+      for (const t of [...tasks.values()].reverse()) {
+        let row = document.getElementById('row-' + t.id);
+        if (!row) {
+          row = document.createElement('div');
+          row.className = 'task-row';
+          row.id = 'row-' + t.id;
+          container.prepend(row);
+        }
+
+        const cls = t.status === 'READY' ? 'ready' :
+          t.status === 'PARTIAL' ? 'partial' :
+            t.status === 'ERROR' ? 'error' : 'progress';
+
+        const label = {
+          IN_PROGRESS: 'В процессе',
+          READY: 'Готово',
+          PARTIAL: 'Частично',
+          ERROR: 'Ошибка',
+        }[t.status] ?? t.status;
+
+        let result = '';
+        if (t.status === 'READY') {
+          result = t.data?.length
+            ? `<div class="task-result found">Найдено: ${t.data.join(', ')}</div>`
+            : `<div class="task-result none">Слово не найдено (длина ≤ ${t.maxLen})</div>`;
+        } else if (t.status === 'PARTIAL') {
+          result = t.data?.length
+            ? `<div class="task-result partial">⚠ Частично: ${t.data.join(', ')}</div>`
+            : `<div class="task-result none">⚠ Частичный результат, слов не найдено</div>`;
+        } else if (t.status === 'ERROR') {
+          result = `<div class="task-result err">Ошибка или таймаут</div>`;
+        }
+
+        const cancelBtn = t.status === 'IN_PROGRESS'
+          ? `<button class="btn-cancel" onclick="cancelTask('${t.id}')">Отменить</button>`
+          : '';
+
+        const shortId = t.id.length > 20
+          ? t.id.slice(0, 8) + '…' + t.id.slice(-4)
+          : t.id;
+
+        row.innerHTML = `
       <div>
         <div class="task-hash">${t.hash}</div>
         <div class="task-id-row">
@@ -616,38 +817,39 @@ function renderTasks() {
         <span class="task-elapsed">${fmtElapsed(t.startedAt)}</span>
         ${cancelBtn}
       </div>`;
-  }
-}
-
-async function checkConn() {
-  const badge = document.getElementById('conn');
-  try {
-    const r = await fetch(`${MANAGER}/internal/api/worker/health`,
-      {signal: AbortSignal.timeout(2500)});
-    if (r.ok) {
-      badge.textContent = 'подключено';
-      badge.className   = 'conn-badge ok';
-      return;
+      }
     }
-  } catch (_) {}
-  badge.textContent = 'нет соединения';
-  badge.className   = 'conn-badge err';
-}
 
-function fmtElapsed(start) {
-  const s = Math.floor((Date.now() - start) / 1000);
-  if (s < 60)   return `${s}с`;
-  if (s < 3600) return `${Math.floor(s / 60)}м ${s % 60}с`;
-  return `${Math.floor(s / 3600)}ч ${Math.floor(s % 3600 / 60)}м`;
-}
+    async function checkConn() {
+      const badge = document.getElementById('conn');
+      try {
+        const r = await fetch(`${MANAGER}/internal/api/worker/health`,
+          { signal: AbortSignal.timeout(2500) });
+        if (r.ok) {
+          badge.textContent = 'подключено';
+          badge.className = 'conn-badge ok';
+          return;
+        }
+      } catch (_) { }
+      badge.textContent = 'нет соединения';
+      badge.className = 'conn-badge err';
+    }
 
-checkConn();
-setInterval(poll,       1500);
-setInterval(checkConn, 10000);
-setInterval(() => {
-  if ([...tasks.values()].some(t => t.status === 'IN_PROGRESS')) renderTasks();
-}, 1000);
-</script>
-<script src="https://cdn.jsdelivr.net/npm/blueimp-md5/js/md5.min.js"></script>
+    function fmtElapsed(start) {
+      const s = Math.floor((Date.now() - start) / 1000);
+      if (s < 60) return `${s}с`;
+      if (s < 3600) return `${Math.floor(s / 60)}м ${s % 60}с`;
+      return `${Math.floor(s / 3600)}ч ${Math.floor(s % 3600 / 60)}м`;
+    }
+
+    checkConn();
+    setInterval(poll, 1500);
+    setInterval(checkConn, 10000);
+    setInterval(() => {
+      if ([...tasks.values()].some(t => t.status === 'IN_PROGRESS')) renderTasks();
+    }, 1000);
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/blueimp-md5/js/md5.min.js"></script>
 </body>
+
 </html>

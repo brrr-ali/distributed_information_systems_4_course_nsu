@@ -15,13 +15,12 @@ namespace Manager.ManagerController
         private readonly IManagerService _managerService;
         private readonly ILogger<InternalWorkerController> _logger;
 
-        public InternalWorkerController(IManagerService managerService,
-            ILogger<InternalWorkerController> logger)
+        public InternalWorkerController(IManagerService managerService, ILogger<InternalWorkerController> logger)
         {
             _managerService = managerService;
             _logger = logger;
         }
-        
+
 
         [HttpPost("register")]
         public async Task<ActionResult<WorkerRegisterResponse>> RegisterWorker([FromBody] WorkerRegisterRequest request)
@@ -37,7 +36,6 @@ namespace Manager.ManagerController
         public IActionResult ReceiveResult([FromBody] WorkerTaskResponse response)
         {
             _managerService.ProcessWorkerResult(response);
-
             return Ok();
         }
 
@@ -59,9 +57,8 @@ namespace Manager.ManagerController
         public IActionResult IsRegistered(Guid workerId)
         {
             var workers = _managerService.GetAllWorkers();
-            var known   = workers.Any(w => w.WorkerId == workerId);
+            var known = workers.Any(w => w.WorkerId == workerId);
             return known ? Ok() : NotFound();
         }
-
     }
 }

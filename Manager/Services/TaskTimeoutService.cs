@@ -41,7 +41,6 @@ public class TaskTimeoutService : BackgroundService
     private async Task CheckTimeouts(CancellationToken stoppingToken)
     {
         var timedOutTasks = _managerService.GetTimedOutTasks(_taskTimeout);
-        
         foreach (var task in timedOutTasks)
         {
             _logger.LogWarning("Task {TaskId} timed out, cancelling...", task.RequestId);

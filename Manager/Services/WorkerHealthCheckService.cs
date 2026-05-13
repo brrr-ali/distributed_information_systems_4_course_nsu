@@ -8,7 +8,7 @@ public class WorkerHealthCheckService : BackgroundService
 {
     private readonly ILogger<WorkerHealthCheckService> _logger;
     private readonly IManagerService _managerService;
-    private readonly IHttpClientFactory _httpClientFactory; 
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(30);
     private readonly TimeSpan _timeout = TimeSpan.FromSeconds(5);
     private readonly int _maxFailedChecks = 3;
@@ -51,7 +51,7 @@ public class WorkerHealthCheckService : BackgroundService
     private async Task CheckWorkersHealth(CancellationToken stoppingToken)
     {
         var workers = _managerService.GetAllWorkers();
-        
+
         foreach (var worker in workers)
         {
             try
@@ -61,28 +61,28 @@ public class WorkerHealthCheckService : BackgroundService
 
                 var client = _httpClientFactory.CreateClient();
                 var healthUrl = $"{worker.Url}/internal/api/worker/hash/crack/health";
-                _logger.LogInformation("Checking health for {WorkerName} at {Url}", 
+                _logger.LogInformation("Checking health for {WorkerName} at {Url}",
                     worker.WorkerName, healthUrl);
                 var response = await client.GetAsync(healthUrl, cts.Token);
-                
-                
-                _logger.LogInformation("Health check response from {WorkerName}: {StatusCode}", 
+
+
+                _logger.LogInformation("Health check response from {WorkerName}: {StatusCode}",
                     worker.WorkerName, response.StatusCode);
                 bool isAlive = response.IsSuccessStatusCode;
-                
+
                 _managerService.UpdateWorkerHealth(worker.WorkerId, isAlive, resetFailedChecks: false);
-                
+
 
                 if (!isAlive && worker.IsAlive)
                 {
-                    _logger.LogWarning("Worker {WorkerName} ({WorkerUrl}) is not responding", 
+                    _logger.LogWarning("Worker {WorkerName} ({WorkerUrl}) is not responding",
                         worker.WorkerName, worker.Url);
                 }
                 else if (isAlive && !worker.IsAlive)
                 {
                     _logger.LogInformation("Worker {WorkerName} is back online", worker.WorkerName);
                     _managerService.UpdateWorkerHealth(worker.WorkerId, false, resetFailedChecks: true);
-        
+
                 }
             }
             catch (Exception ex)
@@ -98,6 +98,6 @@ public class WorkerHealthCheckService : BackgroundService
 
         var remainingWorkers = _managerService.GetAllWorkers();
         _logger.LogInformation("After cleanup: {Count} workers remaining", remainingWorkers.Count);
-    
+
     }
 }

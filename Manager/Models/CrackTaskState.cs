@@ -26,7 +26,7 @@ public class CrackTaskState
     public List<Guid> AssignedWorkers { get; set; } = new();
 
     public ConcurrentDictionary<Guid, WorkerProgress> WorkersProgress { get; set; } = new();
-    
+
     public double TotalProgress => AssignedWorkers.Count > 0
         ? WorkersProgress.Values.Average(w => w.ProgressPercent)
         : 0;

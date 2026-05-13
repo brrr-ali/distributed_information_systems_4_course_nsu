@@ -23,5 +23,4 @@ namespace Manager.DTO
         int progress,
         List<string>? data
     );
-    
 }

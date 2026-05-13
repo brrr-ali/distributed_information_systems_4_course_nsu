@@ -10,7 +10,7 @@ public class WorkerRegistrationService : BackgroundService
     private readonly ILogger<WorkerRegistrationService> _logger;
 
     private const int RetryDelaySeconds = 5;
-    private const int HeartbeatSeconds  = 10;
+    private const int HeartbeatSeconds = 10;
 
     public WorkerRegistrationService(
         HttpClient httpClient,
@@ -18,8 +18,8 @@ public class WorkerRegistrationService : BackgroundService
         ILogger<WorkerRegistrationService> logger)
     {
         _httpClient = httpClient;
-        _config     = config;
-        _logger     = logger;
+        _config = config;
+        _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -34,7 +34,7 @@ public class WorkerRegistrationService : BackgroundService
             await Task.Delay(TimeSpan.FromSeconds(HeartbeatSeconds), stoppingToken);
 
             if (!await IsRegisteredAtManager(stoppingToken))
-            {   
+            {
                 _logger.LogWarning("Worker is not registered at manager (manager restarted?), re-registering...");
                 await RegisterWithRetry(stoppingToken);
             }

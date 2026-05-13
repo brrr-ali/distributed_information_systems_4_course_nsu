@@ -13,9 +13,7 @@ namespace Manager.ManagerController
     {
         private readonly ILogger<HashController> _logger;
         private readonly IManagerService _managerService;
-        public HashController(
-            IManagerService tableManager,
-            ILogger<HashController> logger)
+        public HashController(IManagerService tableManager, ILogger<HashController> logger)
         {
             _managerService = tableManager;
             _logger = logger;
@@ -26,7 +24,6 @@ namespace Manager.ManagerController
         public async Task<ActionResult<ManagerCrackResponse>> CrackHash([FromBody] ManagerCrackRequest request)
         {
             var id = await _managerService.CreateCrackTask(request);
-
             return Ok(new ManagerCrackResponse(id));
         }
 
@@ -34,22 +31,18 @@ namespace Manager.ManagerController
         public async Task<ActionResult<ManagerStatusResponse>> GetCrackStatus([FromQuery] Guid requestId)
         {
             _logger.LogInformation("GetCrackStatus called with requestId: {requestId}", requestId);
-            
             try
             {
                 if (requestId == Guid.Empty)
                 {
-
-                _logger.LogWarning("Empty requestId received");
+                    _logger.LogWarning("Empty requestId received");
                     return BadRequest("Invalid requestId");
                 }
-                
                 var status = _managerService.GetStatus(requestId);
                 return Ok(status);
             }
             catch (KeyNotFoundException ex)
             {
-
                 _logger.LogWarning(ex, "Task {requestId} not found", requestId);
                 return NotFound(ex.Message);
             }
@@ -63,7 +56,7 @@ namespace Manager.ManagerController
                 return StatusCode(500, "Internal server error");
             }
         }
-        
+
         [HttpPost("cancel")]
         public async Task<IActionResult> CancelCrackTask([FromBody] CancelTaskRequest request)
         {
@@ -71,5 +64,4 @@ namespace Manager.ManagerController
             return Ok();
         }
     }
-    
 }

@@ -26,9 +26,9 @@ public class ManagerService : IManagerService
         IHttpClientFactory httpClientFactory,
         ILogger<ManagerService> logger)
     {
-        _config    = config.Value;
+        _config = config.Value;
         _httpClient = httpClientFactory.CreateClient();
-        _logger    = logger;
+        _logger = logger;
 
         RestoreState();
     }
@@ -37,12 +37,12 @@ public class ManagerService : IManagerService
 
     public async Task<Guid> RegisterWorker(WorkerRegisterRequest request)
     {
-        var id     = Guid.NewGuid();
+        var id = Guid.NewGuid();
         var worker = new WorkerInfo
         {
-            WorkerId   = id,
+            WorkerId = id,
             WorkerName = request.WorkerName,
-            Url        = request.Url
+            Url = request.Url
         };
 
         _workers[id] = worker;
@@ -61,7 +61,7 @@ public class ManagerService : IManagerService
 
     public async Task<Guid> CreateCrackTask(ManagerCrackRequest request)
     {
-        var id    = Guid.NewGuid();
+        var id = Guid.NewGuid();
         var total = CalculateTotalCombinations(request.MaxLength);
 
         _logger.LogInformation(
@@ -69,22 +69,21 @@ public class ManagerService : IManagerService
 
         var task = new CrackTaskState
         {
-            RequestId           = id,
-            Hash                = request.Hash,
-            TotalCombinations   = total,
+            RequestId = id,
+            Hash = request.Hash,
+            TotalCombinations = total,
             CheckedCombinations = 0,
-            Status              = CrackStatus.PENDING,
-            MaxLength           = request.MaxLength,
-            FoundWords          = new List<string>(),
-            StartedAt           = DateTime.UtcNow,
+            Status = CrackStatus.PENDING,
+            MaxLength = request.MaxLength,
+            FoundWords = new List<string>(),
+            StartedAt = DateTime.UtcNow,
         };
 
         _taskStates[id] = task;
         SaveState();
 
         _taskQueue.Enqueue(id);
-        _logger.LogInformation(
-            "Task {RequestId} enqueued, queue length = {Length}", id, _taskQueue.Count);
+        _logger.LogInformation("Task {RequestId} enqueued, queue length = {Length}", id, _taskQueue.Count);
 
         _ = Task.Run(ProcessQueue);
 
@@ -111,12 +110,12 @@ public class ManagerService : IManagerService
 
         var statusString = task.Status switch
         {
-            CrackStatus.PENDING     => "IN_PROGRESS",
+            CrackStatus.PENDING => "IN_PROGRESS",
             CrackStatus.IN_PROGRESS => "IN_PROGRESS",
-            CrackStatus.READY       => "READY",
-            CrackStatus.ERROR       => "ERROR",
-            CrackStatus.PARTITIAL   => "PARTIAL",
-            _                       => "IN_PROGRESS"
+            CrackStatus.READY => "READY",
+            CrackStatus.ERROR => "ERROR",
+            CrackStatus.PARTITIAL => "PARTIAL",
+            _ => "IN_PROGRESS"
         };
 
         List<string>? data = task.Status is CrackStatus.READY or CrackStatus.PARTITIAL
@@ -145,14 +144,14 @@ public class ManagerService : IManagerService
                 if (wp.RangeEnd == 0)
                 {
                     wp.RangeStart = response.RangeStart;
-                    wp.RangeEnd   = response.RangeEnd;
+                    wp.RangeEnd = response.RangeEnd;
                     _logger.LogInformation(
                         "Worker {Name} range set to [{Start}-{End}]",
                         wp.WorkerName, wp.RangeStart, wp.RangeEnd);
                 }
 
-                wp.CheckedCount  += response.CheckedCount;
-                wp.CurrentIndex   = response.CurrentIndex;
+                wp.CheckedCount += response.CheckedCount;
+                wp.CurrentIndex = response.CurrentIndex;
                 wp.LastReportTime = DateTime.UtcNow;
 
                 if (response.IsRequestDone)
@@ -185,7 +184,7 @@ public class ManagerService : IManagerService
             if (task.WorkersProgress.Values.All(w => w.IsCompleted) ||
                 task.CheckedCombinations >= task.TotalCombinations)
             {
-                task.Status      = CrackStatus.READY;
+                task.Status = CrackStatus.READY;
                 task.CompletedAt = DateTime.UtcNow;
                 _logger.LogInformation(
                     "TASK {TaskId} COMPLETED! Found {Count} words",
@@ -206,7 +205,7 @@ public class ManagerService : IManagerService
         if (!_workers.TryGetValue(workerId, out var worker))
             return;
 
-        worker.IsAlive  = isAlive;
+        worker.IsAlive = isAlive;
         worker.LastSeen = DateTime.UtcNow;
 
         if (isAlive)
@@ -254,7 +253,7 @@ public class ManagerService : IManagerService
 
     public void CheckTaskTimeouts(TimeSpan timeout)
     {
-        var now     = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
         var timedOut = _taskStates.Values
             .Where(t => t.Status == CrackStatus.IN_PROGRESS
                         && t.StartedAt.HasValue
@@ -408,18 +407,18 @@ public class ManagerService : IManagerService
 
         for (int i = 0; i < partCount; i++)
         {
-            var worker     = aliveWorkers[i];
+            var worker = aliveWorkers[i];
             var workerTask = new WorkerTaskRequest(requestId, hash, maxLength, i, partCount);
 
             var taskState = _taskStates[requestId];
             taskState.AssignedWorkers.Add(worker.WorkerId);
             taskState.WorkersProgress[worker.WorkerId] = new WorkerProgress
             {
-                WorkerId       = worker.WorkerId,
-                WorkerName     = worker.WorkerName,
-                RangeStart     = 0,
-                RangeEnd       = 0,
-                CheckedCount   = 0,
+                WorkerId = worker.WorkerId,
+                WorkerName = worker.WorkerName,
+                RangeStart = 0,
+                RangeEnd = 0,
+                CheckedCount = 0,
                 LastReportTime = DateTime.UtcNow
             };
 
@@ -444,7 +443,7 @@ public class ManagerService : IManagerService
             return;
 
         long remainingStart = dead.CurrentIndex + 1;
-        long remainingEnd   = dead.RangeEnd;
+        long remainingEnd = dead.RangeEnd;
 
         if (remainingStart > remainingEnd)
         {
@@ -463,7 +462,7 @@ public class ManagerService : IManagerService
 
             lock (task)
             {
-                task.Status      = CrackStatus.PARTITIAL;
+                task.Status = CrackStatus.PARTITIAL;
                 task.CompletedAt = DateTime.UtcNow;
             }
 
@@ -474,13 +473,13 @@ public class ManagerService : IManagerService
 
         long remaining = remainingEnd - remainingStart + 1;
         long chunkSize = remaining / aliveWorkers.Count;
-        long current   = remainingStart;
+        long current = remainingStart;
 
         for (int i = 0; i < aliveWorkers.Count; i++)
         {
-            var worker    = aliveWorkers[i];
+            var worker = aliveWorkers[i];
             long newStart = current;
-            long newEnd   = i == aliveWorkers.Count - 1
+            long newEnd = i == aliveWorkers.Count - 1
                 ? remainingEnd
                 : current + chunkSize - 1;
 
@@ -497,12 +496,12 @@ public class ManagerService : IManagerService
                 task.AssignedWorkers.Add(worker.WorkerId);
                 task.WorkersProgress[worker.WorkerId] = new WorkerProgress
                 {
-                    WorkerId       = worker.WorkerId,
-                    WorkerName     = worker.WorkerName,
-                    RangeStart     = newStart,
-                    RangeEnd       = newEnd,
-                    CheckedCount   = 0,
-                    CurrentIndex   = newStart,
+                    WorkerId = worker.WorkerId,
+                    WorkerName = worker.WorkerName,
+                    RangeStart = newStart,
+                    RangeEnd = newEnd,
+                    CheckedCount = 0,
+                    CurrentIndex = newStart,
                     LastReportTime = DateTime.UtcNow
                 };
 
@@ -556,8 +555,8 @@ public class ManagerService : IManagerService
     private long CalculateTotalCombinations(int maxLength)
     {
         long baseLen = _config.Alphabet.Length;
-        long total   = 0;
-        long power   = 1;
+        long total = 0;
+        long power = 1;
         for (int i = 1; i <= maxLength; i++)
         {
             power *= baseLen;
@@ -577,16 +576,16 @@ public class ManagerService : IManagerService
                 Tasks = _taskStates.Values
                     .Select(t => new TaskSnapshot
                     {
-                        RequestId           = t.RequestId,
-                        Hash                = t.Hash,
-                        MaxLength           = t.MaxLength,
-                        TotalCombinations   = t.TotalCombinations,
+                        RequestId = t.RequestId,
+                        Hash = t.Hash,
+                        MaxLength = t.MaxLength,
+                        TotalCombinations = t.TotalCombinations,
                         CheckedCombinations = t.CheckedCombinations,
-                        Status              = t.Status,
-                        FoundWords          = t.FoundWords.ToList(),
-                        CreatedAt           = t.CreatedAt,
-                        StartedAt           = t.StartedAt,
-                        CompletedAt         = t.CompletedAt,
+                        Status = t.Status,
+                        FoundWords = t.FoundWords.ToList(),
+                        CreatedAt = t.CreatedAt,
+                        StartedAt = t.StartedAt,
+                        CompletedAt = t.CompletedAt,
                     })
                     .ToList(),
 
@@ -618,7 +617,7 @@ public class ManagerService : IManagerService
                 return;
             }
 
-            var json     = File.ReadAllText(StateFilePath);
+            var json = File.ReadAllText(StateFilePath);
             var snapshot = JsonSerializer.Deserialize<ManagerStateSnapshot>(json);
             if (snapshot is null)
                 return;
@@ -631,15 +630,15 @@ public class ManagerService : IManagerService
 
                 _taskStates[t.RequestId] = new CrackTaskState
                 {
-                    RequestId           = t.RequestId,
-                    Hash                = t.Hash,
-                    MaxLength           = t.MaxLength,
-                    TotalCombinations   = t.TotalCombinations,
+                    RequestId = t.RequestId,
+                    Hash = t.Hash,
+                    MaxLength = t.MaxLength,
+                    TotalCombinations = t.TotalCombinations,
                     CheckedCombinations = t.CheckedCombinations,
-                    Status              = status,
-                    FoundWords          = t.FoundWords,
-                    StartedAt           = t.StartedAt,
-                    CompletedAt         = t.CompletedAt,
+                    Status = status,
+                    FoundWords = t.FoundWords,
+                    StartedAt = t.StartedAt,
+                    CompletedAt = t.CompletedAt,
                 };
             }
 
@@ -669,21 +668,21 @@ public class ManagerService : IManagerService
 
     internal sealed class ManagerStateSnapshot
     {
-        public List<TaskSnapshot> Tasks     { get; set; } = new();
-        public List<Guid>         TaskQueue { get; set; } = new();
+        public List<TaskSnapshot> Tasks { get; set; } = new();
+        public List<Guid> TaskQueue { get; set; } = new();
     }
 
     internal sealed class TaskSnapshot
     {
-        public Guid            RequestId           { get; set; }
-        public string          Hash                { get; set; } = string.Empty;
-        public int             MaxLength           { get; set; }
-        public long            TotalCombinations   { get; set; }
-        public long            CheckedCombinations { get; set; }
-        public CrackStatus     Status              { get; set; }
-        public List<string>    FoundWords          { get; set; } = new();
-        public DateTime        CreatedAt           { get; set; }
-        public DateTime?       StartedAt           { get; set; }
-        public DateTime?       CompletedAt         { get; set; }
+        public Guid RequestId { get; set; }
+        public string Hash { get; set; } = string.Empty;
+        public int MaxLength { get; set; }
+        public long TotalCombinations { get; set; }
+        public long CheckedCombinations { get; set; }
+        public CrackStatus Status { get; set; }
+        public List<string> FoundWords { get; set; } = new();
+        public DateTime CreatedAt { get; set; }
+        public DateTime? StartedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
     }
 }

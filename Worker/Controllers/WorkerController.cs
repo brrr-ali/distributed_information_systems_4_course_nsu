@@ -29,7 +29,6 @@ public class WorkerController : ControllerBase
         return Ok();
     }
 
-    
     [HttpPost("cancel")]
     public IActionResult CancelTask([FromBody] CancelTaskRequest request)
     {

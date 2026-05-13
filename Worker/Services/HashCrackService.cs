@@ -8,7 +8,7 @@ namespace Worker.Services;
 
 public class HashCrackService : IHashCrackService
 {
-    private readonly char[]     _alphabet;
+    private readonly char[] _alphabet;
     private readonly WorkerConfig _config;
     private readonly ILogger<HashCrackService> _logger;
     private readonly HttpClient _httpClient;
@@ -16,24 +16,24 @@ public class HashCrackService : IHashCrackService
     private readonly ConcurrentDictionary<Guid, (Task Task, CancellationTokenSource Cts)>
         _activeTasks = new();
 
-    private const int ReportInterval     = 100_000;
-    private const int SendRetryDelayMs   = 2_000;
-    private const int SendMaxAttempts    = 10;
+    private const int ReportInterval = 100_000;
+    private const int SendRetryDelayMs = 2_000;
+    private const int SendMaxAttempts = 10;
 
     public HashCrackService(
         WorkerConfig config,
         ILogger<HashCrackService> logger,
         HttpClient httpClient)
     {
-        _config    = config;
-        _alphabet  = config.Alphabet.ToCharArray();
-        _logger    = logger;
+        _config = config;
+        _alphabet = config.Alphabet.ToCharArray();
+        _logger = logger;
         _httpClient = httpClient;
     }
 
     public void StartTask(WorkerTaskRequest request)
     {
-        var cts  = new CancellationTokenSource();
+        var cts = new CancellationTokenSource();
         var task = Task.Run(() => ProcessTask(request, cts.Token), cts.Token);
 
         _activeTasks[request.TaskRequestId] = (task, cts);
@@ -67,17 +67,17 @@ public class HashCrackService : IHashCrackService
             if (request.StartIndex.HasValue && request.EndIndex.HasValue)
             {
                 startIndex = request.StartIndex.Value;
-                endIndex   = request.EndIndex.Value;
+                endIndex = request.EndIndex.Value;
                 _logger.LogInformation(
                     "{Worker} REASSIGNED task {TaskId}: [{Start}-{End}]",
                     _config.WorkerName, request.TaskRequestId, startIndex, endIndex);
             }
             else
             {
-                long total     = CalculateTotalCombinations(request.MaxLength);
+                long total = CalculateTotalCombinations(request.MaxLength);
                 long chunkSize = total / request.PartCount;
                 startIndex = (long)request.PartNumber * chunkSize;
-                endIndex   = request.PartNumber == request.PartCount - 1
+                endIndex = request.PartNumber == request.PartCount - 1
                     ? total - 1
                     : (long)(request.PartNumber + 1) * chunkSize - 1;
 
@@ -88,10 +88,10 @@ public class HashCrackService : IHashCrackService
                     startIndex, endIndex, total);
             }
 
-            var  found        = new List<string>();
-            long batchCount   = 0;
+            var found = new List<string>();
+            long batchCount = 0;
             long currentIndex = startIndex;
-            var  startTime    = DateTime.UtcNow;
+            var startTime = DateTime.UtcNow;
 
             for (long index = startIndex; index <= endIndex; index++)
             {
@@ -117,9 +117,9 @@ public class HashCrackService : IHashCrackService
                         startIndex, endIndex,
                         isCompleted: false, ct);
 
-                    var elapsed      = (DateTime.UtcNow - startTime).TotalSeconds;
+                    var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
                     var totalChecked = currentIndex - startIndex + 1;
-                    var speed        = elapsed > 0 ? totalChecked / elapsed : 0;
+                    var speed = elapsed > 0 ? totalChecked / elapsed : 0;
 
                     _logger.LogInformation(
                         "{Worker} task {TaskId}: {Checked}/{Total}, speed {Speed:F0} w/s",
@@ -243,8 +243,8 @@ public class HashCrackService : IHashCrackService
     private long CalculateTotalCombinations(int maxLength)
     {
         long baseLen = _alphabet.Length;
-        long total   = 0;
-        long power   = 1;
+        long total = 0;
+        long power = 1;
         for (int i = 1; i <= maxLength; i++)
         {
             power *= baseLen;
@@ -255,9 +255,9 @@ public class HashCrackService : IHashCrackService
 
     private string IndexToWord(long index, int maxLength)
     {
-        long baseLen    = _alphabet.Length;
+        long baseLen = _alphabet.Length;
         long levelStart = 0;
-        long power      = 1;
+        long power = 1;
 
         for (int wordLength = 1; wordLength <= maxLength; wordLength++)
         {
@@ -266,12 +266,12 @@ public class HashCrackService : IHashCrackService
 
             if (index < levelStart + levelSize)
             {
-                long   localIndex = index - levelStart;
-                char[] chars      = new char[wordLength];
+                long localIndex = index - levelStart;
+                char[] chars = new char[wordLength];
 
                 for (int i = wordLength - 1; i >= 0; i--)
                 {
-                    chars[i]   = _alphabet[localIndex % baseLen];
+                    chars[i] = _alphabet[localIndex % baseLen];
                     localIndex /= baseLen;
                 }
 
@@ -286,9 +286,9 @@ public class HashCrackService : IHashCrackService
 
     private static string CalculateMd5(string input)
     {
-        using var md5   = MD5.Create();
-        var bytes       = Encoding.UTF8.GetBytes(input);
-        var hashBytes   = md5.ComputeHash(bytes);
+        using var md5 = MD5.Create();
+        var bytes = Encoding.UTF8.GetBytes(input);
+        var hashBytes = md5.ComputeHash(bytes);
         return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
     }
 }

@@ -27,8 +27,8 @@ namespace Shared.DTO
         int MaxLength,
         int PartNumber,
         int PartCount,
-        long ? StartIndex = null, 
-        long? EndIndex   = null 
+        long? StartIndex = null,
+        long? EndIndex = null
     );
 
     public record WorkerTaskResponse
@@ -37,10 +37,10 @@ namespace Shared.DTO
         Guid TaskRequestId,
         List<string> FoundWords,
         long CheckedCount,
-        long CurrentIndex, 
+        long CurrentIndex,
         long RangeStart,
         long RangeEnd,
-        bool IsRequestDone 
+        bool IsRequestDone
     );
 
     public record CancelTaskRequest(Guid TaskId);
